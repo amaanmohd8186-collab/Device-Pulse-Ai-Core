@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and subscription data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email" },
+        "subscriptionStatus": { "type": "string", "enum": ["FREE", "PRO", "ULTRA"], "description": "Current tier" },
+        "subscriptionId": { "type": "string", "description": "Razorpay Subscription ID" },
+        "expiryDate": { "type": "string", "format": "date-time", "description": "Subscription end date" },
+        "planId": { "type": "string", "description": "Razorpay Plan ID" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "subscriptionStatus"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User documents indexed by UID"
+    }
+  }
+}

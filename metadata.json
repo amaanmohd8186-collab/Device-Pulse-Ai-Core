@@ -1,0 +1,6 @@
+{
+  "name": "DevicePulse AI: Phone Health & Repair",
+  "description": "AI-powered hardware diagnostic and predictive maintenance platform that simulates live telemetry analysis for battery, thermal, performance, and storage health.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

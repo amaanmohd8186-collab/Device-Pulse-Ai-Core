@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Primitives
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Validation Blueprint for User
+    function isValidUser(data) {
+      return data.uid is string && 
+             data.subscriptionStatus in ['FREE', 'PRO', 'ULTRA'] &&
+             (data.keys().hasAll(['uid', 'subscriptionStatus']));
+    }
+
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().subscriptionStatus == 'FREE';
+      
+      // Updates are restrictive: Users can't manually set their subscription to PRO
+      // This is locked to server-side updates usually, but for local state we might allow some fields
+      // However, the PRO status should ideally only be set by the webhook/server.
+      // So users can only update basic info.
+      allow update: if isOwner(userId) && 
+                      incoming().uid == existing().uid &&
+                      incoming().subscriptionStatus == existing().subscriptionStatus; 
+    }
+  }
+}
