@@ -267,6 +267,22 @@ export default function App() {
   // Simulation controls collapsible status on Home tab
   const [showSimHarness, setShowSimHarness] = useState(false);
 
+  // Ultra 3D Parallax Calibration States
+  const [isUltra3dMode, setIsUltra3dMode] = useState(true);
+  const [tiltIntensity, setTiltIntensity] = useState(1.2);
+
+  // Dynamic 3D Transform generator based on real-time mouse coordinates and light vectoring shadows
+  const get3dStyle = (intensityFactor = 1) => {
+    if (!isUltra3dMode) return {};
+    const rx = mousePosition.y * -14 * intensityFactor * tiltIntensity;
+    const ry = mousePosition.x * 14 * intensityFactor * tiltIntensity;
+    return {
+      transform: `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg)`,
+      transition: "transform 0.1s ease-out, box-shadow 0.15s ease-out",
+      boxShadow: `${mousePosition.x * -16}px ${mousePosition.y * -16}px 32px rgba(0, 240, 255, ${0.08 + Math.abs(mousePosition.x) * 0.18})`
+    };
+  };
+
   // Real-time live system monitoring states
   const [liveMetrics, setLiveMetrics] = useState({
     fps: 60,
@@ -822,7 +838,7 @@ export default function App() {
         <div 
           className="perspective-grid-3d" 
           style={{
-            transform: `rotateX(72deg) rotateY(${mousePosition.x * 4.5}deg) translateY(${mousePosition.y * -18}px)`,
+            transform: `rotateX(${70 + mousePosition.y * -4 * tiltIntensity}deg) rotateY(${mousePosition.x * 6 * tiltIntensity}deg) translateY(${mousePosition.y * -22 * tiltIntensity}px)`,
             filter: "drop-shadow(0 0 15px rgba(0, 240, 255, 0.22))",
             opacity: 0.95
           }}
@@ -860,7 +876,10 @@ export default function App() {
             {/* Giant Central 3D Core Health Orb */}
             <div className="lg:col-span-4 flex flex-col gap-6">
               
-              <div className="bg-[#081120]/90 border border-slate-800 rounded-2xl p-6 relative overflow-hidden flex flex-col items-center select-none text-center">
+              <div 
+                style={get3dStyle(0.85)}
+                className="bg-[#081120]/90 border border-slate-800 rounded-2xl p-6 relative overflow-hidden flex flex-col items-center select-none text-center"
+              >
                 {/* Visual sci-fi scanner items */}
                 <div className="absolute top-3 left-4 font-mono text-[8px] text-gray-500 tracking-wider">
                   HEALTH ENGINE: LIVE
@@ -986,8 +1005,84 @@ export default function App() {
 
               </div>
 
+              {/* 🔮 ULTRA 3D HYPER-COGNITION CALIBRATION VALVE */}
+              <div 
+                style={get3dStyle(0.9)}
+                className="bg-gradient-to-b from-[#091b2e] to-[#040912] border border-neon-cyan/45 rounded-2xl p-5 relative overflow-hidden text-left shadow-[0_10px_30px_rgba(0,240,255,0.15)] select-none"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-neon-cyan/15 to-transparent rounded-full filter blur-xl pointer-events-none" />
+                
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-neon-cyan/20 border border-neon-cyan/40 flex items-center justify-center text-neon-cyan animate-pulse">
+                      <Layers className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-display font-bold text-xs tracking-wide">ULTRA 3D HUD DEVICE MATRIX</h4>
+                      <span className="text-[7.5px] font-mono text-neon-cyan uppercase tracking-widest block leading-none">REAL-TIME RENDER VALVE</span>
+                    </div>
+                  </div>
+                  
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={isUltra3dMode} 
+                      onChange={(e) => {
+                        setIsUltra3dMode(e.target.checked);
+                        if (typeof playBeep === 'function') {
+                          playBeep(600, 100, "sine");
+                        }
+                      }}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-cyan" />
+                  </label>
+                </div>
+
+                <p className="text-[10px] font-mono text-gray-400 leading-relaxed mb-4">
+                  Gyroscopic parallax calculations actively tilt interface segments based on cursor coordinate inputs for a true simulated holographic depth.
+                </p>
+
+                {isUltra3dMode && (
+                  <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                      <span className="text-gray-400 uppercase">Tilt Amplitude Scale:</span>
+                      <span className="text-neon-cyan font-bold">{tiltIntensity.toFixed(1)}x</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0.2" 
+                      max="2.5" 
+                      step="0.1"
+                      value={tiltIntensity} 
+                      onChange={(e) => {
+                        setTiltIntensity(parseFloat(e.target.value));
+                        if (typeof playBeep === 'function') {
+                          playBeep(400 + tiltIntensity * 100, 50, "sine");
+                        }
+                      }}
+                      className="w-full h-1.5 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-neon-cyan" 
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-1.5 pt-2">
+                      <div className="bg-[#030611] p-2 rounded-lg border border-slate-800/60 text-center">
+                        <span className="text-[8px] text-gray-500 uppercase block">Rotation Axis X</span>
+                        <span className="text-[10px] text-white font-mono font-bold">{(mousePosition.y * -14 * tiltIntensity).toFixed(1)}°</span>
+                      </div>
+                      <div className="bg-[#030611] p-2 rounded-lg border border-slate-800/60 text-center">
+                        <span className="text-[8px] text-gray-500 uppercase block">Rotation Axis Y</span>
+                        <span className="text-[10px] text-white font-mono font-bold">{(mousePosition.x * 14 * tiltIntensity).toFixed(1)}°</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* 🚀 SMART OPTIMIZER: ONE-TAP AI BOOST DEVICE */}
-              <div className="bg-gradient-to-b from-[#110729] to-[#04010a] border border-neon-purple/40 rounded-2xl p-5 relative overflow-hidden text-left shadow-[0_4px_20px_rgba(157,0,255,0.15)] select-none">
+              <div 
+                style={get3dStyle(0.95)}
+                className="bg-gradient-to-b from-[#110729] to-[#04010a] border border-neon-purple/40 rounded-2xl p-5 relative overflow-hidden text-left shadow-[0_4px_20px_rgba(157,0,255,0.15)] select-none"
+              >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-neon-purple/10 to-transparent rounded-full filter blur-xl pointer-events-none" />
                 
                 <div className="flex items-center gap-2 mb-3">
@@ -1014,7 +1109,10 @@ export default function App() {
               </div>
 
               {/* CYBER COMPLIANCE & ACCREDITATION BOARD */}
-              <div className="bg-[#081120]/95 border border-neon-blue/15 rounded-2xl p-4.5 relative overflow-hidden select-none text-left shadow-[0_4px_24px_rgba(3,7,12,0.9)] backdrop-blur-md">
+              <div 
+                style={get3dStyle(0.8)}
+                className="bg-[#081120]/95 border border-neon-blue/15 rounded-2xl p-4.5 relative overflow-hidden select-none text-left shadow-[0_4px_24px_rgba(3,7,12,0.9)] backdrop-blur-md"
+              >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-neon-blue/10 to-transparent rounded-full filter blur-xl pointer-events-none" />
                 <div className="flex items-center gap-2.5 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-neon-blue/15 border border-neon-blue/30 flex items-center justify-center text-neon-blue shadow-[0_0_10px_rgba(0,240,255,0.1)]">
@@ -1054,7 +1152,10 @@ export default function App() {
             <div className="lg:col-span-8 flex flex-col gap-6">
               
               {/* Daily system heartbeat graph preview widget */}
-              <div className="bg-[#081120]/90 border border-slate-800 rounded-2xl p-5 select-none relative overflow-hidden">
+              <div 
+                style={get3dStyle(0.85)}
+                className="bg-[#081120]/90 border border-slate-800 rounded-2xl p-5 select-none relative overflow-hidden"
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h4 className="text-white font-display font-medium text-sm flex items-center gap-1.5">
@@ -1143,7 +1244,11 @@ export default function App() {
               </div>
 
               {/* ⚡ REAL-TIME HIGH-FREQUENCY TELEMETRY LAYER */}
-              <div id="real-time-live-system" className="bg-[#050b14]/95 border border-neon-cyan/25 rounded-2xl p-5 text-left relative overflow-hidden shadow-[0_4px_20px_rgba(0,240,255,0.1)]">
+              <div 
+                id="real-time-live-system" 
+                style={get3dStyle(0.95)}
+                className="bg-[#050b14]/95 border border-neon-cyan/25 rounded-2xl p-5 text-left relative overflow-hidden shadow-[0_4px_20px_rgba(0,240,255,0.1)]"
+              >
                 {/* Visual sci-fi scanner bar */}
                 <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-neon-cyan to-transparent animate-pulse" />
                 
