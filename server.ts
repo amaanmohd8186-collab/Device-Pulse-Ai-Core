@@ -362,6 +362,99 @@ Return ONLY a perfectly formatted JSON containing exactly this schema (No markdo
     }
   });
 
+  // Interactive Chat Assistant with Device Telemetry Context
+  app.post("/api/gemini/chat", async (req, res) => {
+    try {
+      const { userMessage, telemetry, history = [] } = req.body;
+      if (!userMessage) {
+        return res.status(400).json({ error: "Message input is required." });
+      }
+
+      const currentTelemetrySummary = telemetry 
+        ? `
+- Model Info: ${telemetry.modelName || 'Device Node'}
+- Overall Health Index: ${telemetry.batteryScore}%
+- Battery: Score ${telemetry.batteryScore}%, Temp ${telemetry.batteryTemp}°C, Voltage ${telemetry.voltageStability}V, State: ${telemetry.chargingState}
+- Thermal System: Current CPU ${telemetry.cpuTemp}°C, Spikes ${telemetry.thermalSpikes}
+- System Logic: RAM Used ${telemetry.ramPressure}%, CPU Used ${telemetry.cpuUsage}%, Lag Spikes ${telemetry.lagSpikes}/min
+- SSD Storage: Score ${telemetry.storageScore}%, Used ${telemetry.storageUsed}%
+- Stress State Profile: ${telemetry.stressLevel || 'Standard'}
+`
+        : "Standard offline device defaults.";
+
+      const chatHistoryText = history.map((h: any) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join("\n");
+
+      let reply = "";
+      if (ai) {
+        const prompt = `
+You are the DevicePulse AI Device Brain, a highly advanced, empathetic, and expert device diagnostic, maintenance, and optimization AI.
+You have direct real-time access to the user's active device hardware telemetry and performance registers.
+
+User is asking: "${userMessage}"
+
+The current real-time system telemetry state is:
+${currentTelemetrySummary}
+
+Past conversation:
+${chatHistoryText}
+
+Respond clearly, explaining the mechanical or systemic reason behind their query (e.g. why battery drains under thermal stress, why RAM allocation causes lag, what GaN chargers do, etc.).
+Keep it conversational, helpful, and scientific yet accessible. Use bullet points if offering actionable self-repair or optimization advice.
+If user asks in Hindi/Hinglish, reply in Hinglish/Hindi or English as suitable.
+Return raw conversational text as plain text or light markdown (with bullet points). Keep your response under 160 words.
+Do NOT use flowery language. Direct and helpful, as a device intelligence agent.
+`;
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: prompt,
+        });
+        reply = response.text || "Diagnostic query processed. Keep silicon structures optimal.";
+      } else {
+        // High fidelity offline rule-based response
+        const msg = userMessage.toLowerCase();
+        const baseTemp = telemetry?.cpuTemp || 39;
+        const ramUsed = telemetry?.ramPressure || 68;
+        const batScore = telemetry?.batteryScore || 88;
+
+        if (msg.includes("heat") || msg.includes("hot") || msg.includes("garam") || msg.includes("temp")) {
+          reply = `Core CPU junction is reporting an active ${baseTemp}°C. Silicone dies dissipation speeds are bottlenecked by high multi-threaded activity or heavy physical environment parameters.
+          
+**Recommendations:**
+- Actively trigger **AI Boost Device** inside the Control panel to throttle idle clock speeds.
+- Remove physical plastic bumpers/covers to increase heat radiation.
+- Limit high-performance gaming mode or heavy Wi-Fi syncing.`;
+        } else if (msg.includes("battery") || msg.includes("drain") || msg.includes("charge") || msg.includes("charging")) {
+          reply = `Active battery health is ${batScore}%. High anode crystal wear or battery temperature (${telemetry?.batteryTemp || 36}°C) can cause rapid power drop. 
+          
+**Recommendations:**
+- Disable continuous background location tracking.
+- Avoid using the phone while plugged into hot/fast GaN power adapters.
+- Select the **Battery Cool Mode** under presets to regulate cell charge speeds.`;
+        } else if (msg.includes("lag") || msg.includes("slow") || msg.includes("speed") || msg.includes("hang") || msg.includes("ram")) {
+          reply = `RAM pressure index is sitting at ${ramUsed}%, meaning some memory pages have swap block wait times. CPU core is currently operating at ${telemetry?.cpuUsage || 28}% load.
+          
+**Recommendations:**
+- Use the **One-Tap AI Fix** button on the Home tab to flush dead cached modules instantly.
+- Restrict auto-start background services.
+- Reboot the core logic system once every 72 hours for clean cache registers.`;
+        } else {
+          reply = `DevicePulse AI Core online. All telemetry segments (Battery: ${batScore}%, CPU Temp: ${baseTemp}°C, RAM: ${ramUsed}%) are currently stable.
+          
+How can I assist you in optimizing your physical smartphone or inspecting repair/warranty profiles? You can ask me questions like:
+- *"Why is my phone heating up right now?"*
+- *"Explain the current battery wear timeline."*
+- *"How to optimize logical thread execution speed?"*`;
+        }
+      }
+
+      return res.json({ reply });
+    } catch (err: any) {
+      console.error("AI Assistant Chat error:", err);
+      return res.status(500).json({ error: err.message || "Cognitive Chat model sync timeout." });
+    }
+  });
+
   // Hardware Analysis Endpoint using Gemini
   app.post("/api/gemini/analyze", async (req, res) => {
     try {

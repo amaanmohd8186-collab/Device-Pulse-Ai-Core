@@ -31,7 +31,11 @@ import {
   Power,
   Play,
   FileText,
-  MessageCircle
+  MessageCircle,
+  Heart,
+  QrCode,
+  Coffee,
+  Coins
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -53,14 +57,47 @@ import MetricCard from "./components/MetricCard";
 import VoiceAssistantScreen from "./components/VoiceAssistantScreen";
 import { RepairNetworkScreen } from "./components/RepairNetworkScreen";
 import { PitchDeckScreen } from "./components/PitchDeckScreen";
-import GoogleChatScreen from "./components/GoogleChatScreen";
 import { SubscriptionPaymentModal } from "./components/SubscriptionPaymentModal";
+import SystemLogs from "./components/SystemLogs";
+import Footer from "./components/Footer";
 import { TelemetryState, SmartAlert, GeminiDiagnosticReport, TelemetryHistoryPoint } from "./types";
 import { DEFAULT_TELEMETRY, PRESETS, calculateWeightedHealthScore, scanTelemetryForRuleAlerts, generateHistoryPoints, getRealBrowserTelemetry } from "./utils/telemetrySim";
-import { initAuth, googleSignIn, logout } from "./lib/auth";
+
+// Helper to generate or retrieve a unique device pulse profile guest ID
+const getGuestUid = () => {
+  let gid = localStorage.getItem("devicepulse_guest_uid");
+  if (!gid) {
+    gid = "guest_" + Math.random().toString(36).substring(2, 11) + "_" + Math.random().toString(36).substring(2, 11);
+    localStorage.setItem("devicepulse_guest_uid", gid);
+  }
+  return gid;
+};
+
+// Tactical dynamic UI audio synth feedback
+const playBeep = (freq = 440, duration = 80, type: OscillatorType = "sine") => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration / 1000);
+  } catch (e) {
+    // Suppressed if audiostream blocked by browser sandbox
+  }
+};
 
 export default function App() {
-  const [user, setUser] = useState<any>(null);
+  const [guestUid] = useState<string>(getGuestUid);
   // Global Telemetry Simulation State
   const [telemetry, setTelemetry] = useState<TelemetryState>(() => {
     const saved = localStorage.getItem("devicepulse_telemetry");
@@ -87,7 +124,7 @@ export default function App() {
   
   // YouTube Style 3D Tabs Management
   // Home (AI Core), Battery, Thermal, Perf, Storage, Voice Assistant, Repair Finder, Pitch Deck
-  const [activeTab, setActiveTab] = useState<"home" | "battery" | "thermal" | "performance" | "storage" | "ai-predictions" | "voice-assistant" | "repair-network" | "pitch-deck" | "google-chat">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "battery" | "thermal" | "performance" | "storage" | "ai-predictions" | "voice-assistant" | "repair-network" | "pitch-deck">("home");
 
   // Premium / Pro unlocked status
   const [isProUnlocked, setIsProUnlocked] = useState(() => {
@@ -113,39 +150,108 @@ export default function App() {
     }
   };
 
-  // Auth Initialization and sync
+  // Device Boot / Synced Initial Registrations
   useEffect(() => {
-    const unsub = initAuth((authedUser) => {
-      setUser(authedUser);
-      syncSubscription(authedUser.uid);
-    }, () => {
-      setUser(null);
-    });
-    return () => unsub();
+    syncSubscription(guestUid);
+  }, [guestUid]);
+
+  // Privacy Policy and Terms of Service dialogue states
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isDonateOpen, setIsDonateOpen] = useState(false);
+
+  // High intensity 3D Mouse Parallax Coordinates
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      // Scale mouse coordinates normalized from -1 to 1 based on screen size
+      const x = (event.clientX / window.innerWidth) * 2 - 1;
+      const y = (event.clientY / window.innerHeight) * 2 - 1;
+      setMousePosition({ x, y });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
   }, []);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await googleSignIn();
-      if (result) {
-        setUser(result.user);
-        syncSubscription(result.user.uid);
+  // Sync URL query state dynamically to handle /privacy deep linking
+  useEffect(() => {
+    const syncUrlState = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+
+      if (
+        searchParams.get("privacy") === "true" || 
+        searchParams.get("page") === "privacy" || 
+        hash === "#privacy" || 
+        hash === "#privacy-policy"
+      ) {
+        setIsPrivacyOpen(true);
       }
-    } catch (e) {
-      console.error("Sign in failed:", e);
-    }
+      if (
+        searchParams.get("terms") === "true" || 
+        searchParams.get("page") === "terms" || 
+        hash === "#terms" || 
+        hash === "#terms-of-service"
+      ) {
+        setIsTermsOpen(true);
+      }
+      if (
+        searchParams.get("donate") === "true" || 
+        searchParams.get("page") === "donate" || 
+        hash === "#donate"
+      ) {
+        setIsDonateOpen(true);
+      }
+    };
+
+    // check on initial mount
+    syncUrlState();
+
+    // listen for popstate, hashchange
+    window.addEventListener("popstate", syncUrlState);
+    window.addEventListener("hashchange", syncUrlState);
+    return () => {
+      window.removeEventListener("popstate", syncUrlState);
+      window.removeEventListener("hashchange", syncUrlState);
+    };
+  }, []);
+
+  const handleOpenPrivacy = () => {
+    playBeep(220, 80, "sine");
+    window.history.pushState(null, "", "?privacy=true");
+    setIsPrivacyOpen(true);
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setUser(null);
-      setSubscriptionStatus("FREE");
-      setIsProUnlocked(false);
-      localStorage.setItem("devicepulse_pro_unlocked", "false");
-    } catch (e) {
-      console.error("Logout failed:", e);
-    }
+  const handleClosePrivacy = () => {
+    window.history.pushState(null, "", window.location.pathname);
+    setIsPrivacyOpen(false);
+  };
+
+  const handleOpenTerms = () => {
+    playBeep(260, 80, "sine");
+    window.history.pushState(null, "", "?terms=true");
+    setIsTermsOpen(true);
+  };
+
+  const handleCloseTerms = () => {
+    window.history.pushState(null, "", window.location.pathname);
+    setIsTermsOpen(false);
+  };
+
+  const handleOpenDonate = () => {
+    playBeep(280, 80, "sawtooth");
+    window.history.pushState(null, "", "?donate=true");
+    setIsDonateOpen(true);
+  };
+
+  const handleCloseDonate = () => {
+    playBeep(230, 85, "sine");
+    window.history.pushState(null, "", window.location.pathname);
+    setIsDonateOpen(false);
   };
 
   // Gemini API prediction state
@@ -160,6 +266,70 @@ export default function App() {
 
   // Simulation controls collapsible status on Home tab
   const [showSimHarness, setShowSimHarness] = useState(false);
+
+  // Real-time live system monitoring states
+  const [liveMetrics, setLiveMetrics] = useState({
+    fps: 60,
+    temp: 38.5,
+    ramUsed: 4.8,
+    charWatts: 18,
+    tempHistory: [38, 38.2, 38.8, 38.5, 39, 39.2, 38.5] as number[]
+  });
+
+  // AI Boost dynamic optimizing sequence
+  const [isAiBoosting, setIsAiBoosting] = useState(false);
+  const [aiBoostStep, setAiBoostStep] = useState(0);
+  const [aiBoostLogs, setAiBoostLogs] = useState<string[]>([]);
+
+  // AI Device Assistant Chat states
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([
+    { role: 'assistant', text: "Hello! I am your DevicePulse AI Device Brain. I have direct access to your real-time hardware telemetry registers. Ask me anything about why your device is heating, lagging, or draining battery!" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Real-time live indicators automatic fluctuate simulator
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveMetrics(prev => {
+        // Calculate dynamic real FPS (higher in normal/optimal, throttled/lagging in stress/load)
+        let targetFps = telemetry.stressLevel === "Hyper-Load" ? Math.floor(45 + Math.random() * 8) : Math.floor(95 + Math.random() * 25);
+        if (telemetry.stressLevel === "Thermal Stress") targetFps = Math.floor(52 + Math.random() * 8);
+        if (telemetry.stressLevel === "Battery Fault") targetFps = Math.floor(58 + Math.random() * 5);
+
+        // CPU temperature with light jitter based on telemetry.cpuTemp
+        const baseTemp = telemetry.cpuTemp;
+        const currentTemp = parseFloat((baseTemp + (Math.random() * 1.2 - 0.6)).toFixed(1));
+
+        // RAM used based on telemetry.ramPressure
+        const totalRam = 8.0;
+        const baseRamPct = telemetry.ramPressure / 100;
+        const currentRamUsed = parseFloat((totalRam * baseRamPct + (Math.random() * 0.15 - 0.075)).toFixed(2));
+
+        // Charging speed watts (express vs usb normal charging)
+        let watts = 0;
+        if (telemetry.chargingState === "Charging" || telemetry.chargingState === "Plugged") {
+          watts = telemetry.chargeType === "Wall GaN Charger" ? Math.floor(45 + Math.random() * 6) : Math.floor(15 + Math.random() * 4);
+        } else {
+          watts = 0; // discharging
+        }
+
+        // Maintain 7 temperature trend points
+        const updatedHistory = [...prev.tempHistory.slice(1), currentTemp];
+
+        return {
+          fps: targetFps,
+          temp: currentTemp,
+          ramUsed: currentRamUsed,
+          charWatts: watts,
+          tempHistory: updatedHistory
+        };
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [telemetry]);
 
   // Animated Splash Screen Booting Sequence State
   const [isBooting, setIsBooting] = useState(true);
@@ -309,6 +479,100 @@ export default function App() {
   };
 
   // Fast Systems Optimizers
+  const handleTriggerAiBoost = () => {
+    setIsAiBoosting(true);
+    setAiBoostStep(0);
+    setAiBoostLogs(["[STAGE 1] INITIATING DYNAMIC ACCELERATION BRIDGE..."]);
+    playBeep(440, 880, "square");
+
+    const runStep = (step: number) => {
+      setTimeout(() => {
+        setAiBoostStep(step);
+        playBeep(300 + step * 100, 350, "sine");
+
+        if (step === 1) {
+          setAiBoostLogs(prev => [...prev, "[STAGE 2] SCANNING KERNEL MEMORY SWAP BLOCKS..."]);
+        } else if (step === 2) {
+          setAiBoostLogs(prev => [...prev, "[STAGE 3] RECLAIMING DETECTED MEMORY LEAK CHANNELS..."]);
+        } else if (step === 3) {
+          setAiBoostLogs(prev => [...prev, "[STAGE 4] DISPATCHING THERMAL JUNCTION SHUNT SIGNAL..."]);
+        } else if (step === 4) {
+          setAiBoostLogs(prev => [...prev, "[STAGE 5] LOCKING IDLE BACKGROUND CPU THROTTLES..."]);
+        } else if (step === 5) {
+          setTelemetry(prev => {
+            return {
+              ...prev,
+              cpuTemp: 34,
+              batteryTemp: 29,
+              cpuUsage: 12,
+              ramPressure: 38,
+              estimatedFPS: 120,
+              thermalSpikes: 0,
+              lagSpikes: 0,
+              stressLevel: "Normal",
+              perfScore: 99,
+              batteryScore: Math.min(100, prev.batteryScore + 5),
+              thermalScore: 98,
+              storageScore: Math.min(100, prev.storageScore + 3)
+            };
+          });
+          setAiBoostLogs(prev => [...prev, "✔ CORE SYSTEM SUITE SUCCESSFULLY BOOSTED TO 99% HIGH INTEGRITY SPEED!"]);
+          playBeep(880, 1760, "sine");
+          setTimeout(() => {
+            setIsAiBoosting(false);
+          }, 3500);
+        }
+      }, 750 * step);
+    };
+
+    for (let i = 1; i <= 5; i++) {
+      runStep(i);
+    }
+  };
+
+  const handleSendChatMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMsgText = chatInput;
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: "user", text: userMsgText }]);
+    setIsChatLoading(true);
+    playBeep(440, 550, "sine");
+
+    try {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userMessage: userMsgText,
+          telemetry: telemetry,
+          history: chatMessages.slice(-5)
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed context analysis.");
+      }
+      setChatMessages(prev => [...prev, { role: "assistant", text: data.reply }]);
+      playBeep(520, 1040, "sine");
+    } catch (err: any) {
+      console.error("AI chat failed:", err);
+      let localReply = "I was unable to synchronize with the DevicePulse deep cognitive networks. ";
+      const msg = userMsgText.toLowerCase();
+      if (msg.includes("heat") || msg.includes("temp") || msg.includes("warm") || msg.includes("garam")) {
+        localReply += `However, analyzing your local registers: CPU is at ${telemetry.cpuTemp}°C. I suggest disabling any active GPS overlays or triggering an 'AI Boost Device' optimization sequence to instantly drop temperatures.`;
+      } else if (msg.includes("batt") || msg.includes("drain") || msg.includes("charg")) {
+        localReply += `However, looking at your battery score: it is currently ${telemetry.batteryScore}%. We are observing high chemical resistance. Ensure you are using standard certified power nodes and not charging during heavy high-fidelity gaming processing.`;
+      } else {
+        localReply += "All device telemetry registers (Sensors, Chips, Storage) are calibrated properly. Let me know if you would like me to trigger an automatic logic performance flush.";
+      }
+      setChatMessages(prev => [...prev, { role: "assistant", text: localReply }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   const runActiveCoolingMode = () => {
     setIsOptimizing(true);
     setOptimizationLog([]);
@@ -551,12 +815,22 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-cyber-bg text-gray-100 flex flex-col font-sans selection:bg-neon-blue selection:text-black tech-grid relative pb-24">
+    <div className="min-h-screen bg-[#03070d] text-gray-100 flex flex-col font-sans selection:bg-neon-blue selection:text-black relative pb-24 overflow-x-hidden">
       
-      {/* Dynamic Background Alert Glow */}
-      <div className={`absolute top-0 left-1/4 w-96 h-96 rounded-full blur-[160px] opacity-10 pointer-events-none transition-all duration-700 ${
-        overallHealthScore < 60 ? "bg-neon-red" : "bg-neon-blue"
-      }`} />
+      {/* Ultra 3D Animated perspective grid and floating auroras */}
+      <div className="perspective-container">
+        <div 
+          className="perspective-grid-3d" 
+          style={{
+            transform: `rotateX(72deg) rotateY(${mousePosition.x * 4.5}deg) translateY(${mousePosition.y * -18}px)`,
+            filter: "drop-shadow(0 0 15px rgba(0, 240, 255, 0.22))",
+            opacity: 0.95
+          }}
+        />
+        <div className="depth-fog" />
+        <div className="ambient-aurora-3d-1" />
+        <div className="ambient-aurora-3d-2" />
+      </div>
 
       {/* Futuristic Header top element */}
       <Header 
@@ -566,17 +840,22 @@ export default function App() {
         isPro={isProUnlocked}
         subscriptionTier={subscriptionStatus}
         onUpgrade={() => setIsPayModalOpen(true)}
-        user={user}
-        onSignIn={handleGoogleSignIn}
-        onLogout={handleLogout}
       />
 
       {/* Main Container Core */}
-      <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6 relative">
+      <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6 relative pb-28">
+        <AnimatePresence mode="wait">
         
         {/* TAB 1: 🏠 AI CORE SUMMARY (CLEAN - CLUTTER FREE HOME SCREEN) */}
         {activeTab === "home" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
+          <motion.div
+            key="home"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full"
+          >
             
             {/* Giant Central 3D Core Health Orb */}
             <div className="lg:col-span-4 flex flex-col gap-6">
@@ -707,6 +986,68 @@ export default function App() {
 
               </div>
 
+              {/* 🚀 SMART OPTIMIZER: ONE-TAP AI BOOST DEVICE */}
+              <div className="bg-gradient-to-b from-[#110729] to-[#04010a] border border-neon-purple/40 rounded-2xl p-5 relative overflow-hidden text-left shadow-[0_4px_20px_rgba(157,0,255,0.15)] select-none">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-neon-purple/10 to-transparent rounded-full filter blur-xl pointer-events-none" />
+                
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-neon-purple/20 border border-neon-purple/40 flex items-center justify-center text-neon-purple animate-pulse">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-display font-bold text-xs tracking-wide">SMART OPTIMIZER MODE</h4>
+                    <span className="text-[8px] font-mono text-neon-purple uppercase tracking-widest block leading-none">ONE-TAP AI BOOST VALVE</span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] font-mono text-gray-400 leading-relaxed mb-4">
+                  Runs extreme background process garbage collection, lowers multi-threaded clock temperatures and optimizes lag throttles instantly.
+                </p>
+
+                <button
+                  onClick={handleTriggerAiBoost}
+                  className="w-full bg-neon-purple hover:bg-opacity-90 text-white font-mono text-xs uppercase font-extrabold tracking-widest py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(157,0,255,0.35)] cursor-pointer hover:shadow-[0_0_25px_rgba(157,0,255,0.5)]"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  LAUNCH 1-TAP AI BOOST
+                </button>
+              </div>
+
+              {/* CYBER COMPLIANCE & ACCREDITATION BOARD */}
+              <div className="bg-[#081120]/95 border border-neon-blue/15 rounded-2xl p-4.5 relative overflow-hidden select-none text-left shadow-[0_4px_24px_rgba(3,7,12,0.9)] backdrop-blur-md">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-neon-blue/10 to-transparent rounded-full filter blur-xl pointer-events-none" />
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-neon-blue/15 border border-neon-blue/30 flex items-center justify-center text-neon-blue shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-display font-bold text-xs tracking-wide">SECURE LEGAL PORTAL</h4>
+                    <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest block leading-none">ISO 27001 & IT ACT COMPLIANT</span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] font-mono text-gray-400 leading-relaxed mb-4">
+                  Fully verified under standard hardware diagnostics guidelines. Privacy protection protocols and customer diagnostics usage agreements are live and secured.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleOpenPrivacy}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-neon-blue/10 hover:bg-neon-blue/25 border border-neon-blue/20 hover:border-neon-blue text-neon-blue rounded-lg text-[9px] font-mono tracking-wider transition-all uppercase cursor-pointer hover:shadow-[0_0_12px_rgba(0,240,255,0.15)]"
+                  >
+                    <Shield className="w-3.5 h-3.5" />
+                    Privacy Policy
+                  </button>
+                  <button
+                    onClick={handleOpenTerms}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-neon-purple/10 hover:bg-neon-purple/25 border border-neon-purple/20 hover:border-neon-purple text-neon-purple rounded-lg text-[9px] font-mono tracking-wider transition-all uppercase cursor-pointer hover:shadow-[0_0_12px_rgba(157,0,255,0.15)]"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    Terms of Use
+                  </button>
+                </div>
+              </div>
+
             </div>
 
             {/* Right side Dashboard: SVG heartbeats, diagnostic summaries, fast repair access, alerts stack */}
@@ -797,6 +1138,129 @@ export default function App() {
                         <span className="block text-neon-blue font-bold">{p.healthScore}%</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ⚡ REAL-TIME HIGH-FREQUENCY TELEMETRY LAYER */}
+              <div id="real-time-live-system" className="bg-[#050b14]/95 border border-neon-cyan/25 rounded-2xl p-5 text-left relative overflow-hidden shadow-[0_4px_20px_rgba(0,240,255,0.1)]">
+                {/* Visual sci-fi scanner bar */}
+                <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-neon-cyan to-transparent animate-pulse" />
+                
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <span className="text-[8px] font-mono text-neon-cyan bg-neon-cyan/10 px-2 py-0.5 rounded border border-neon-cyan/25 uppercase tracking-widest font-bold">
+                      HYPER-FREQUENCY CORE
+                    </span>
+                    <h4 className="text-white font-display font-medium text-sm flex items-center gap-1.5 mt-1.5">
+                      <Zap className="w-4 h-4 text-neon-cyan animate-pulse" />
+                      Live Real-Time Hardware Signal Layer
+                    </h4>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 font-mono text-[9px] text-neon-green bg-neon-green/10 px-2 py-1 rounded border border-neon-green/25">
+                    <span className="w-1.5 h-1.5 rounded-full bg-neon-green inline-block animate-ping" />
+                    1.5s POLLING ACTIVE
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Gauge 1: Live FPS */}
+                  <div className="bg-[#03060c] border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between relative overflow-hidden group">
+                    <div className="absolute top-1 right-2 font-mono text-[8px] text-gray-650">FPS</div>
+                    <span className="text-[9px] font-mono text-gray-400 uppercase">Gaming Rate</span>
+                    <div className="mt-2.5 flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-white font-mono tracking-tight animate-pulse">
+                        {liveMetrics.fps}
+                      </span>
+                      <span className="text-[10px] text-neon-cyan font-mono font-bold">Hz</span>
+                    </div>
+                    {/* Tiny micro graphic indicator */}
+                    <div className="w-full bg-slate-900 h-1 rounded-full mt-2 overflow-hidden">
+                      <div 
+                        className="bg-neon-cyan h-full transition-all duration-300"
+                        style={{ width: `${(liveMetrics.fps / 144) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gauge 2: Real-time Silicon Junction Temp */}
+                  <div className="bg-[#03060c] border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute top-1 right-2 font-mono text-[8px] text-gray-650">TEMP</div>
+                    <span className="text-[9px] font-mono text-gray-400 uppercase">Silicon Junction</span>
+                    <div className="mt-2.5 flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-white font-mono tracking-tight">
+                        {liveMetrics.temp}°
+                      </span>
+                      <span className="text-[10px] text-neon-orange font-mono font-bold">C</span>
+                    </div>
+                    {/* Tiny micro graphic indicator */}
+                    <div className="w-full bg-slate-900 h-1 rounded-full mt-2 overflow-hidden">
+                      <div 
+                        className="bg-neon-orange h-full transition-all duration-300"
+                        style={{ width: `${(liveMetrics.temp / 100) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gauge 3: Dynamic RAM Pressure */}
+                  <div className="bg-[#03060c] border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute top-1 right-2 font-mono text-[8px] text-gray-650">RAM</div>
+                    <span className="text-[9px] font-mono text-gray-400 uppercase">Memory Load</span>
+                    <div className="mt-2.5 flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-white font-mono tracking-tight">
+                        {liveMetrics.ramUsed}
+                      </span>
+                      <span className="text-[10px] text-neon-purple font-mono font-bold">GB</span>
+                    </div>
+                    <div className="w-full bg-slate-900 h-1 rounded-full mt-2 overflow-hidden">
+                      <div 
+                        className="bg-neon-purple h-full transition-all duration-300"
+                        style={{ width: `${(liveMetrics.ramUsed / 8.0) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gauge 4: Watt Detection */}
+                  <div className="bg-[#03060c] border border-slate-800/80 p-3 rounded-xl flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute top-1 right-2 font-mono text-[8px] text-gray-650">POWER</div>
+                    <span className="text-[9px] font-mono text-gray-400 uppercase">Charging Speed</span>
+                    <div className="mt-2.5 flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-white font-mono tracking-tight">
+                        {liveMetrics.charWatts}
+                      </span>
+                      <span className="text-[10px] text-neon-green font-mono font-bold">W</span>
+                    </div>
+                    <div className="w-full bg-slate-900 h-1 rounded-full mt-2 overflow-hidden">
+                      <div 
+                        className="bg-neon-green h-full transition-all duration-300"
+                        style={{ width: `${(liveMetrics.charWatts / 67.5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Micro mini-temperature chart trend */}
+                <div className="mt-4 bg-[#020408] border border-slate-900 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-neon-orange animate-pulse" />
+                    <div>
+                      <span className="text-gray-400 block font-bold text-[10px]">SILICON TREND JUNCTION (60s)</span>
+                      <span className="text-[10px] text-gray-500">Live moving frequency average spikes</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-end gap-1 h-8">
+                    {liveMetrics.tempHistory.map((t, idx) => (
+                      <div key={idx} className="flex flex-col items-center">
+                        <div 
+                          className="w-2.5 rounded-sm bg-neon-orange/85 hover:bg-neon-orange transition-all duration-300" 
+                          style={{ height: `${Math.max(4, Math.min(32, (t - 20) * 0.9))}px` }}
+                          title={`${t}°C`}
+                        />
+                      </div>
+                    ))}
+                    <span className="text-[10px] text-neon-orange font-bold ml-1">{liveMetrics.temp}°C</span>
                   </div>
                 </div>
               </div>
@@ -902,6 +1366,9 @@ export default function App() {
                 )}
               </div>
 
+              {/* DYNAMIC TELEMETRY REAL-TIME CONSOLE FEED */}
+              <SystemLogs />
+
               {/* COLLAPSIBLE SYSTEM CALIBRATOR DRAWER / TRAY */}
               <div className="bg-[#081120]/80 border border-slate-800 rounded-2xl p-4 text-left">
                 <button 
@@ -996,12 +1463,19 @@ export default function App() {
 
             </div>
 
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 2: 🔋 DETATED BATTERY SCREEN MODULE */}
         {activeTab === "battery" && (
-          <div className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6  space-y-6 text-left animate-fade-in font-mono text-xs">
+          <motion.div
+            key="battery"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6 space-y-6 text-left font-mono text-xs w-full"
+          >
             <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
               <div className="w-10 h-10 rounded-xl bg-neon-green/10 border border-neon-green/30 flex items-center justify-center text-neon-green glow-green">
                 <BatteryIcon className="w-5 h-5 text-neon-green" />
@@ -1158,12 +1632,19 @@ export default function App() {
               </div>
             </div>
 
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 3: 🌡️ DETAILED THERMAL SCREEN MODULE */}
         {activeTab === "thermal" && (
-          <div className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6 space-y-6 text-left animate-fade-in font-mono text-xs">
+          <motion.div
+            key="thermal"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6 space-y-6 text-left font-mono text-xs w-full"
+          >
             <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
               <div className="w-10 h-10 rounded-xl bg-neon-orange/10 border border-neon-orange/30 flex items-center justify-center text-neon-orange glow-orange">
                 <Flame className="w-5 h-5 text-neon-orange" />
@@ -1256,12 +1737,19 @@ export default function App() {
               </div>
             </div>
 
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 4: ⚙️ DETAILED PERFORMANCE LOGIC SCREEN MODULE */}
         {activeTab === "performance" && (
-          <div className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6 space-y-6 text-left animate-fade-in font-mono text-xs">
+          <motion.div
+            key="performance"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6 space-y-6 text-left font-mono text-xs w-full"
+          >
             <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
               <div className="w-10 h-10 rounded-xl bg-neon-purple/10 border border-neon-purple/30 flex items-center justify-center text-neon-purple glow-purple">
                 <Zap className="w-5 h-5 text-neon-purple" />
@@ -1393,12 +1881,19 @@ export default function App() {
               </div>
             </div>
 
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 5: 💾 DETAILED FLASH STORAGE SCREEN MODULE */}
         {activeTab === "storage" && (
-          <div className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6 space-y-6 text-left animate-fade-in font-mono text-xs">
+          <motion.div
+            key="storage"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="bg-[#081120]/90 border border-slate-800 rounded-3xl p-6 space-y-6 text-left font-mono text-xs w-full"
+          >
             <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 glow-blue">
                 <HardDrive className="w-5 h-5 text-blue-400" />
@@ -1475,12 +1970,19 @@ export default function App() {
               </div>
             </div>
 
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 6: 🤖 AI FAILURES PREDICTIVE DIAGNOSTIC REPORT REVEAL */}
         {activeTab === "ai-predictions" && (
-          <div className="space-y-6 text-left select-none animate-fade-in font-mono text-xs">
+          <motion.div
+            key="ai-predictions"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="space-y-6 text-left select-none font-mono text-xs w-full"
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded bg-neon-purple/10 flex items-center justify-center text-neon-purple shadow-[0_0_10px_rgba(157,0,255,0.2)]">
@@ -1507,6 +2009,263 @@ export default function App() {
                     UPGRADE PRO
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* 3D ULTRA DEVICE HEALTH CHANNELS & PREDICTION ENGINE (ALWAYS ON PRO HUD) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Card 1: Next 7 Days Subsystem Risk */}
+              <div className="bg-[#090e17]/95 border border-slate-800/80 p-5 rounded-2xl relative overflow-hidden text-left shadow-lg">
+                <div className="absolute top-2 right-3 px-2 py-0.5 bg-neon-red/10 rounded border border-neon-red/30 text-[#ff3b3b] text-[8px] font-bold tracking-widest uppercase">
+                  ACTIVE CRITICAL RANGE
+                </div>
+                <span className="text-[9px] font-mono text-gray-500 uppercase">Risk Evaluation Model</span>
+                <h4 className="text-white font-display font-medium text-sm mt-1">7-Day Risk Coefficient</h4>
+                
+                <div className="my-5 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-3xl font-black text-white font-mono tracking-tight animate-pulse">
+                      {telemetry.stressLevel === "Hyper-Load" || telemetry.cpuTemp >= 70 ? "76.4%" : "18.8%"}
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-mono mt-0.5">Calculated Silicon Wear Risk</span>
+                  </div>
+                  {/* Circular progress with SVG */}
+                  <div className="relative w-16 h-16">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="32" cy="32" r="28" className="stroke-slate-800 fill-transparent" strokeWidth="4" />
+                      <circle 
+                        cx="32" 
+                        cy="32" 
+                        r="28" 
+                        className={`fill-transparent transition-all duration-1000 ${
+                          telemetry.stressLevel === "Hyper-Load" || telemetry.cpuTemp >= 70 ? "stroke-neon-red" : "stroke-neon-cyan"
+                        }`} 
+                        strokeWidth="4" 
+                        strokeDasharray="176"
+                        strokeDashoffset={176 - (176 * (telemetry.stressLevel === "Hyper-Load" || telemetry.cpuTemp >= 70 ? 76.4 : 18.8)) / 100}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center font-mono text-[9px] text-white font-bold">
+                      {telemetry.stressLevel === "Hyper-Load" || telemetry.cpuTemp >= 70 ? "HIGH" : "SAFE"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-900/40 pt-2.5 font-mono text-[9.5px] text-gray-400">
+                  <span className="text-neon-cyan font-bold block">★ AI LOG PREDICTION</span>
+                  Predicted crash node vector identified under heavy GPS/3D rendering tasks.
+                </div>
+              </div>
+
+              {/* Card 2: Battery Death Probability */}
+              <div className="bg-[#090e17]/95 border border-slate-800/80 p-5 rounded-2xl relative overflow-hidden text-left shadow-lg">
+                <div className="absolute top-2 right-3 px-2 py-0.5 bg-neon-cyan/10 rounded border border-neon-cyan/30 text-neon-cyan text-[8px] font-bold tracking-widest uppercase">
+                  COGNITIVE CORE
+                </div>
+                <span className="text-[9px] font-mono text-gray-500 uppercase">Chemical Cell Wear</span>
+                <h4 className="text-white font-display font-medium text-sm mt-1">Anode Death Probability</h4>
+
+                <div className="my-5 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-3xl font-black text-white font-mono tracking-tight">
+                      {telemetry.stressLevel === "Battery Fault" ? "68.2%" : "4.9%"}
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-mono mt-0.5">Cell impedance threshold</span>
+                  </div>
+                  
+                  <div className="relative w-16 h-16">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="32" cy="32" r="28" className="stroke-slate-800 fill-transparent" strokeWidth="4" />
+                      <circle 
+                        cx="32" 
+                        cy="32" 
+                        r="28" 
+                        className={`fill-transparent transition-all duration-1000 ${
+                          telemetry.stressLevel === "Battery Fault" ? "stroke-neon-orange" : "stroke-neon-green"
+                        }`} 
+                        strokeWidth="4" 
+                        strokeDasharray="176"
+                        strokeDashoffset={176 - (176 * (telemetry.stressLevel === "Battery Fault" ? 68.2 : 4.9)) / 100}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center font-mono text-[9px] text-white font-bold">
+                      {telemetry.stressLevel === "Battery Fault" ? "WARN" : "STABLE"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-900/40 pt-2.5 font-mono text-[9.5px] text-gray-400">
+                  <span className="text-neon-green font-bold block">★ AGING HORIZON (180 DAYS)</span>
+                  Battery is structurally resilient. Voltage maintains stable discharge thresholds.
+                </div>
+              </div>
+
+              {/* Card 3: Overheating Probability Curve */}
+              <div className="bg-[#090e17]/95 border border-slate-800/80 p-5 rounded-2xl relative overflow-hidden text-left shadow-lg">
+                <div className="absolute top-2 right-3 px-2 py-0.5 bg-neon-orange/10 rounded border border-neon-orange/30 text-neon-orange text-[8px] font-bold tracking-widest uppercase">
+                  THERMAL OVERRUN
+                </div>
+                <span className="text-[9px] font-mono text-gray-500 uppercase">Silicon Junction Alert</span>
+                <h4 className="text-white font-display font-medium text-sm mt-1">Overheating Chance</h4>
+
+                <div className="my-5 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-3xl font-black text-white font-mono tracking-tight">
+                      {telemetry.cpuTemp >= 70 ? `${Math.round(telemetry.cpuTemp * 0.95)}%` : "12.4%"}
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-mono mt-0.5">T junction thermal overrun</span>
+                  </div>
+                  
+                  <div className="relative w-16 h-16">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="32" cy="32" r="28" className="stroke-slate-800 fill-transparent" strokeWidth="4" />
+                      <circle 
+                        cx="32" 
+                        cy="32" 
+                        r="28" 
+                        className={`fill-transparent transition-all duration-1000 ${
+                          telemetry.cpuTemp >= 72 ? "stroke-neon-red animate-pulse" : "stroke-neon-orange"
+                        }`} 
+                        strokeWidth="4" 
+                        strokeDasharray="176"
+                        strokeDashoffset={176 - (176 * (telemetry.cpuTemp >= 70 ? Math.round(telemetry.cpuTemp * 0.95) : 12.4)) / 100}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center font-mono text-[9px] text-white font-bold">
+                      {telemetry.cpuTemp >= 70 ? "CRITICAL" : "COOL"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-900/40 pt-2.5 font-mono text-[9.5px] text-gray-400">
+                  <span className="text-neon-orange font-bold block">★ JUNCTION RECTIFICATION</span>
+                  Throttling governor active. Subsystem is safe from physical hardware melt.
+                </div>
+              </div>
+            </div>
+
+            {/* 📉 INTERACTIVE COMPONENT DEGRADATION TIMELINE FORECAST CHANNELS */}
+            <div className="bg-[#050b14]/95 border border-slate-800 rounded-2xl p-5 text-left relative overflow-hidden shadow-2xl">
+              <h4 className="text-xs font-mono text-neon-cyan uppercase tracking-widest block mb-4 border-b border-slate-800 pb-2.5 font-bold">
+                📉 Interactive Component Degradation Timeline & Aging Forecast (6 Months Chart)
+              </h4>
+              <p className="text-[10.5px] text-gray-400 font-mono leading-relaxed mb-5">
+                Calculates silicon transistor erosion rates and chemical cell corrosion to map memory write speeds and maximum capacity curves over 180 simulated days.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Curve A: Battery Capacity Degradation */}
+                <div className="bg-[#03060c] border border-slate-900 p-4 rounded-xl">
+                  <span className="block text-[9px] text-gray-500 uppercase tracking-widest mb-2 font-bold select-none text-left">
+                    Max Charge Capacity Weakening (mAh)
+                  </span>
+                  
+                  <div className="h-32 w-full mt-3 select-none">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={[
+                          { name: "Day 0", capacity: telemetry.batteryScore, speed: 100 },
+                          { name: "Day 30", capacity: telemetry.batteryScore - 1.2, speed: 98 },
+                          { name: "Day 60", capacity: telemetry.batteryScore - 2.5, speed: 95 },
+                          { name: "Day 90", capacity: telemetry.batteryScore - 4.1, speed: 92 },
+                          { name: "Day 120", capacity: telemetry.batteryScore - 6.0, speed: 88 },
+                          { name: "Day 150", capacity: telemetry.batteryScore - 8.2, speed: 84 },
+                          { name: "Day 180", capacity: telemetry.batteryScore - 11.5, speed: 80 }
+                        ]}
+                        margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      >
+                        <XAxis dataKey="name" tick={{ fill: '#4b5563', fontSize: 8 }} />
+                        <YAxis domain={['auto', 'auto']} tick={{ fill: '#4b5563', fontSize: 8 }} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: '#090d16', border: '1px solid #1e293b', fontSize: 10 }} />
+                        <Area type="monotone" dataKey="capacity" stroke="#00ff85" fillOpacity={0.15} fill="url(#colorCapacity)" />
+                        <defs>
+                          <linearGradient id="colorCapacity" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#00ff85" stopOpacity={0.4}/>
+                            <stop offset="95%" stopColor="#00ff85" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex justify-between text-[9px] text-gray-500 font-mono mt-2">
+                    <span>* Linear chemical deterioration</span>
+                    <span className="text-neon-green font-bold">180 Days Estimate: {telemetry.batteryScore - 11.5}% capacity</span>
+                  </div>
+                </div>
+
+                {/* Curve B: Flash Memory Slowdown Latency curve */}
+                <div className="bg-[#03060c] border border-slate-900 p-4 rounded-xl">
+                  <span className="block text-[9px] text-gray-500 uppercase tracking-widest mb-2 font-bold select-none text-left">
+                    Silicon Flash Write Throttling Engine Latency
+                  </span>
+                  
+                  <div className="h-32 w-full mt-3 select-none">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={[
+                          { name: "Day 0", speed: 96, latency: 12 },
+                          { name: "Day 30", speed: 92, latency: 15 },
+                          { name: "Day 60", speed: 88, latency: 19 },
+                          { name: "Day 90", speed: 82, latency: 26 },
+                          { name: "Day 120", speed: 76, latency: 34 },
+                          { name: "Day 150", speed: 68, latency: 45 },
+                          { name: "Day 180", speed: 55, latency: 62 }
+                        ]}
+                        margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      >
+                        <XAxis dataKey="name" tick={{ fill: '#4b5563', fontSize: 8 }} />
+                        <YAxis tick={{ fill: '#4b5563', fontSize: 8 }} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: '#090d16', border: '1px solid #1e293b', fontSize: 10 }} />
+                        <Area type="monotone" dataKey="latency" stroke="#00f6ff" fillOpacity={0.15} fill="url(#colorLatency)" />
+                        <defs>
+                          <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#00f6ff" stopOpacity={0.4}/>
+                            <stop offset="95%" stopColor="#00f6ff" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex justify-between text-[9px] text-gray-500 font-mono mt-2">
+                    <span>* Block write friction accumulation</span>
+                    <span className="text-neon-cyan font-bold">180 Days Estimate: +62ms latency</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Smart Anomaly alert notifications box */}
+            <div className="bg-[#0b0c10]/95 border border-amber-500/25 rounded-2xl p-5 text-left relative overflow-hidden shadow-lg">
+              <h4 className="text-xs font-mono text-amber-500 uppercase tracking-widest block mb-3 font-bold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 animate-pulse" />
+                Smart AI Anomaly Watchdog Registers
+              </h4>
+              <div className="space-y-2">
+                {telemetry.cpuUsage >= 70 && (
+                  <div className="flex items-center gap-2.5 p-3 bg-red-950/20 border border-red-500/30 rounded-xl">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    <div>
+                      <span className="text-red-400 font-bold block bg-red-950/30 font-mono text-[10px]">⚠️ [UNUSUAL CPU SPIKE DETECTED]</span>
+                      <span className="text-[10px] text-gray-400">Core chipset load registers spike at {telemetry.cpuUsage}%. Extreme thermals possible!</span>
+                    </div>
+                  </div>
+                )}
+                {telemetry.cpuTemp >= 60 && (
+                  <div className="flex items-center gap-2.5 p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <div>
+                      <span className="text-amber-400 font-bold block font-mono text-[10px]">⚠️ [BACKGROUND APP CAUSING EXHAUST HEAT]</span>
+                      <span className="text-[10px] text-gray-400">Excess heat observed. A background sweep is advised to avoid hardware throttling.</span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2.5 p-3 bg-emerald-950/10 border border-emerald-500/20 rounded-xl">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <div>
+                    <span className="text-emerald-400 font-bold block font-mono text-[10px]">✔ [ANODE CHEMICAL BALANCE STABLE]</span>
+                    <span className="text-[10px] text-gray-400">Stable lithium-ion charge flow registers standard current voltages.</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1690,12 +2449,19 @@ export default function App() {
 
               </div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 7: 🎙️ VOICE ASSISTANT ENGINEER PANEL (PRO FEATURE) */}
         {activeTab === "voice-assistant" && (
-          <div className="animate-fade-in text-left relative flex-1 flex flex-col min-h-[500px]">
+          <motion.div
+            key="voice-assistant"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="text-left relative flex-1 flex flex-col min-h-[500px] w-full"
+          >
              {!isProUnlocked && (
               <div className="absolute inset-0 bg-[#03070d]/80 backdrop-blur-md z-20 flex items-center justify-center p-6 text-center rounded-3xl overflow-hidden border border-slate-800">
                 <div className="max-w-sm space-y-4">
@@ -1724,30 +2490,38 @@ export default function App() {
               runActiveRamFlush={runActiveRamFlush}
               runStorageVacuum={runStorageVacuum}
             />
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 8: 🛠️ REPAIR NETWORK LOCATOR (INDIA FIRST SERVICE) */}
         {activeTab === "repair-network" && (
-          <div className="animate-fade-in text-left">
+          <motion.div
+            key="repair-network"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="text-left w-full"
+          >
             <RepairNetworkScreen />
-          </div>
+          </motion.div>
         )}
 
         {/* TAB 9: 💼 PITCH DECK SLIDER & COMPUTERS */}
         {activeTab === "pitch-deck" && (
-          <div className="animate-fade-in text-left">
+          <motion.div
+            key="pitch-deck"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="text-left w-full"
+          >
             <PitchDeckScreen />
-          </div>
+          </motion.div>
         )}
 
-        {/* TAB 10: 💬 GOOGLE CHAT INTEGRATION */}
-        {activeTab === "google-chat" && (
-          <div className="animate-fade-in text-left flex-1 flex flex-col">
-            <GoogleChatScreen />
-          </div>
-        )}
-
+        </AnimatePresence>
       </main>
 
       {/* FLOATING HOLOGRAPHIC BOTTOM NAVIGATION DOCK (YOUTUBE STYLE) */}
@@ -1852,29 +2626,15 @@ export default function App() {
           {activeTab === "pitch-deck" && <span className="absolute bottom-1 w-1 h-1 bg-neon-yellow rounded-full animate-pulse" />}
         </button>
 
-        {/* GOOGLE CHAT */}
-        <button
-          onClick={() => setActiveTab("google-chat")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
-            activeTab === "google-chat" ? "bg-neon-blue/10 text-white" : "text-gray-400 hover:text-white"
-          }`}
-        >
-          <MessageCircle className={`w-4 h-4 transition-transform ${activeTab === "google-chat" ? "scale-110 text-neon-blue font-bold" : "scale-95"}`} />
-          <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase font-medium">Chat</span>
-          {activeTab === "google-chat" && <span className="absolute bottom-1 w-1 h-1 bg-neon-blue rounded-full animate-pulse" />}
-        </button>
-
       </nav>
 
-      {/* Futuristic technical layout border margin credits */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-[#040811]/90 backdrop-blur-md border-t border-slate-900 py-1 px-4 flex items-center justify-between font-mono text-[9px] text-gray-500 select-none z-30">
-        <div>
-          DIAGNOSTICACCELERATOR: READY (REF NODE: {telemetry.timestamp.substring(11, 19)} UTC)
-        </div>
-        <div>
-          STATUS LINKED IN INDIA &bull; PROTOC_V1.12_ESTABLISHED
-        </div>
-      </footer>
+      {/* Redesigned compact professional legal and support compliance footer */}
+      <Footer 
+        onOpenPrivacy={handleOpenPrivacy}
+        onOpenTerms={handleOpenTerms}
+        onOpenDonate={handleOpenDonate}
+        timestamp={telemetry.timestamp}
+      />
 
       <SubscriptionPaymentModal 
         isOpen={isPayModalOpen}
@@ -1883,9 +2643,509 @@ export default function App() {
           setIsProUnlocked(true);
           localStorage.setItem("devicepulse_pro_unlocked", "true");
         }}
-        user={user}
-        onSignIn={handleGoogleSignIn}
       />
+
+      {/* Interactive Developer Handshake & Donation Portal (Indian Secure UPI & Global Crypto simulation) */}
+      <AnimatePresence>
+        {isDonateOpen && (
+          <div className="fixed inset-0 bg-[#03070d]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="bg-[#081120] border border-neon-purple/35 w-full max-w-lg rounded-2xl overflow-hidden p-6 relative flex flex-col max-h-[90vh] z-50 shadow-[0_0_50px_rgba(157,0,255,0.25)] text-left"
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-transparent via-neon-purple to-transparent" />
+              
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <div className="text-left">
+                  <h2 className="text-md font-display font-black text-white tracking-wider flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-neon-purple animate-pulse" />
+                    DEVELOPER HANDSHAKE PORTAL
+                  </h2>
+                  <p className="text-[10px] font-mono text-[#00f0ff] uppercase tracking-widest mt-1">DIRECT TRIBUTE TO THE AUTHOR</p>
+                </div>
+                <button 
+                  onClick={handleCloseDonate}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-neon-red/10 border border-white/10 hover:border-neon-red/30 text-gray-400 hover:text-neon-red flex items-center justify-center text-sm font-black transition-all cursor-pointer"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Contributor credentials display */}
+              <div className="bg-[#050b14]/55 border border-slate-800/80 p-3.5 rounded-xl space-y-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-400 font-mono">LEAD SYSTEMS SCIENTIST:</span>
+                  <span className="text-xs text-white font-black tracking-wide font-mono">AMAAN SIDDIQUI</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-400 font-mono">DEVELOPER EMAIL:</span>
+                  <a href="mailto:amaanmohd8681@gmail.com" className="text-xs text-[#00f0ff] underline font-bold hover:text-white transition-colors font-mono">amaanmohd8681@gmail.com</a>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-400 font-mono">SECURE TRANSIT NODES:</span>
+                  <span className="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-black border border-emerald-500/20 uppercase">UPI / CRYPTO ENVELOPE</span>
+                </div>
+              </div>
+
+              {/* Dynamic Interactive Tiers Selector */}
+              <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1 mb-4">
+                <p className="text-[10px] text-slate-300 font-mono leading-relaxed mb-1 text-center">
+                  Support further cognitive development upgrades & premium nodes deployment. Choose an envelope tribute below:
+                </p>
+
+                {/* Preset tiers */}
+                {[
+                  { id: "coolant", label: "Buy Liquid Nitrogen Coolant Package", priceUsd: 5, priceInr: 399, desc: "Keeps silicon junction core from thermal throttling.", color: "border-[#00f0ff]/30 text-[#00f0ff]", hover: "hover:border-[#00f0ff] bg-[#00f0ff]/5" },
+                  { id: "hosting", label: "Quantum Neural Mesh Extension", priceUsd: 15, priceInr: 1199, desc: "Provides high probability compute parameters to nodes.", color: "border-neon-purple/30 text-neon-purple", hover: "hover:border-neon-purple bg-neon-purple/5" },
+                  { id: "cloud", label: "Establish Dedicated Cloud Node cluster", priceUsd: 30, priceInr: 2499, desc: "Unrestricted bandwidth proxy to continuous AI telemetry.", color: "border-neon-yellow/30 text-neon-yellow", hover: "hover:border-neon-yellow bg-neon-yellow/5" },
+                ].map((tier) => (
+                  <button
+                    key={tier.id}
+                    onClick={() => {
+                      playBeep(320, 80, "sawtooth");
+                      alert(`INITIATED SECURE TRIBUTE HANDSHAKE:\n\nLead Recipient: Amaan Siddiqui (amaanmohd8681@gmail.com)\nTribute: ${tier.label}\nValue: ₹${tier.priceInr} / $${tier.priceUsd}\n\n[SIMULATION]: Click confirm to authorize node telemetry. Direct tributes can be sent via BHIM UPI or PayPal directly to amaanmohd8681@gmail.com!`);
+                    }}
+                    className={`w-full text-left p-3 rounded-xl border transition-all ${tier.color} ${tier.hover} block cursor-pointer hover:scale-[1.01]`}
+                  >
+                    <div className="flex items-center justify-between mb-1 font-mono">
+                      <span className="text-[10px] font-bold uppercase tracking-wider">{tier.label}</span>
+                      <span className="text-[10px] font-black bg-white/5 px-2 py-0.5 rounded">₹{tier.priceInr} / ${tier.priceUsd}</span>
+                    </div>
+                    <p className="text-[9.5px] text-slate-400 font-mono">{tier.desc}</p>
+                  </button>
+                ))}
+
+                {/* Secure custom donation handshakes */}
+                <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
+                  <span className="text-[9.5px] text-gray-400 block font-bold mb-2 uppercase tracking-wide font-mono">CUSTOM SECURE TRIBUTE</span>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1.5 text-[11px] font-bold text-gray-500 font-mono">₹</span>
+                      <input 
+                        type="number" 
+                        placeholder="Amount in INR" 
+                        defaultValue="500"
+                        id="custom-donation-amount"
+                        className="w-full bg-[#081120] border border-slate-700/80 rounded-lg py-1.5 pl-5 pr-2 w-full text-white font-mono text-[11px] focus:outline-none focus:border-neon-purple"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        const amount = (document.getElementById("custom-donation-amount") as HTMLInputElement)?.value || "500";
+                        playBeep(380, 100, "sine");
+                        alert(`INITIATING CUSTOM TRIBUTE SECURE PROTOCOL:\n\nLead Recipient: Amaan Siddiqui\nEmail: amaanmohd8681@gmail.com\nValue: ₹${amount} INR\n\nThank you for supporting Amaan Siddiqui! Please contact the author for custom systems configurations.`);
+                      }}
+                      className="px-4 py-1.5 bg-neon-purple text-black font-black uppercase text-[10px] tracking-wider rounded-lg transition-all hover:bg-purple-400 cursor-pointer font-mono"
+                    >
+                      SEND TRIBUTE
+                    </button>
+                  </div>
+                </div>
+
+                {/* Direct QR scan simulation box */}
+                <div className="border border-slate-800 bg-[#050b14]/90 p-3 rounded-xl flex items-center gap-3.5">
+                  <div className="bg-white p-1 rounded">
+                    <div className="w-16 h-16 bg-slate-900 flex items-center justify-center p-1 text-white relative">
+                      <QrCode className="w-14 h-14 text-white" />
+                      <div className="absolute inset-0 bg-neon-purple/15 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="text-left space-y-1 flex-1">
+                    <span className="text-[9.5px] text-[#0cf35a] bg-[#0cf35a]/10 px-1.5 py-0.2 rounded border border-[#0cf35a]/20 font-black tracking-widest uppercase font-mono">UPI_GATEWAY: READY</span>
+                    <p className="text-[9px] text-slate-400 font-mono tracking-tight leading-tight">
+                      Scan BHIM UPI, GPay, Paytm or PhonePe to issue secure developer tributes to <strong className="text-white">Amaan Siddiqui</strong>.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="border-t border-white/10 pt-4 flex justify-between items-center bg-[#050b15] -mx-6 -mb-6 p-4">
+                <span className="text-[10px] text-slate-500 font-mono">SECURE BY DESIGN &bull; ENCRYPTED DEV SSL</span>
+                <button 
+                  onClick={handleCloseDonate}
+                  className="px-5 py-2 bg-neon-purple hover:bg-purple-500 text-white font-black uppercase tracking-wider text-[10px] rounded-lg transition-colors cursor-pointer font-mono"
+                >
+                  DISMISS SECURE PANEL
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Dynamic Privacy Policy Modal (Cyberpunk Glassmorphism) */}
+      <AnimatePresence>
+        {isPrivacyOpen && (
+          <div className="fixed inset-0 bg-[#03070d]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="bg-[#081120] border border-neon-blue/30 w-full max-w-2xl rounded-2xl overflow-hidden p-6 relative flex flex-col max-h-[85vh] z-50 shadow-[0_0_50px_rgba(0,240,255,0.15)]"
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-neon-blue to-transparent" />
+              
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <div className="text-left">
+                  <h2 className="text-lg font-display font-black text-white tracking-wider flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-neon-blue" />
+                    PRIVACY POLICY & COGNITIVE SECURITY
+                  </h2>
+                  <p className="text-[10px] font-mono text-gray-400">LAST UPDATED: 2026-05-25 (COGNITIVE REVISION)</p>
+                </div>
+                <button 
+                  onClick={handleClosePrivacy}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-neon-red/10 border border-white/10 hover:border-neon-red/30 text-gray-400 hover:text-neon-red flex items-center justify-center text-sm font-black transition-all cursor-pointer"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Policy scroll area */}
+              <div className="flex-1 overflow-y-auto text-left font-mono text-[11px] text-gray-300 space-y-4 pr-1 leading-relaxed custom-scrollbar">
+                <div className="bg-neon-blue/5 border border-neon-blue/15 p-3 rounded-lg text-neon-blue text-[10px]">
+                  <strong>🇮🇳 DATA RESIDENCY DECREE:</strong> All metrics, dynamic spectrum diagnostics, and hardware variables processed by DevicePulse AI Core are anchored within Indian local browser buffers. No telemetry leaves the state grid without authorization.
+                </div>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">1. Diagnostics & Telemetry Harvesting</h3>
+                  <p>
+                    We leverage live browser device APIs and simulated sensor hardware channels (including CPU voltage, RAM latency, system thermal loops, and cluster memory status) to render 3D dynamic health representations. This data stream is processed directly on your local system interface.
+                  </p>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">2. AI Diagnosis Anonymization</h3>
+                  <p>
+                    When initiating Gemini Cognitive Analysis, only aggregated parameters (pure voltage values, percentage logs, storage capacity points) are transmitted through secure TLS 1.3 tunnels to our dedicated proxy server. Individual hardware identifiers, unique user profiles, or local file trees are NEVER analyzed or retained.
+                  </p>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">3. Subscription Ledger Retention</h3>
+                  <p>
+                    Any transaction registered via our Razorpay integration retains only the generic transaction token, subscription state, and active duration. This is tied securely to your unique local client device key, neutralizing standard marketing tracker models.
+                  </p>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">4. User Rights (GDPR / Indian DPDP Act)</h3>
+                  <p>
+                    As an offline-first hardware monitor, you maintain 100% data access. Cleansing your application storage variables via standard browser configuration instantly expunges all recorded histories, localized tokens, and custom diagnostic diagnostics forever.
+                  </p>
+                </section>
+              </div>
+
+              <div className="mt-6 border-t border-white/10 pt-4 flex justify-between items-center bg-[#050b15] -mx-6 -mb-6 p-4">
+                <span className="text-[10px] text-gray-500 font-mono">SECURE BY DESIGN &bull; ZERO TRACKERS FOUND</span>
+                <button 
+                  onClick={handleClosePrivacy}
+                  className="px-5 py-2 bg-neon-blue hover:bg-[#00e0ef] text-black font-black uppercase tracking-wider text-[10px] rounded-lg transition-colors cursor-pointer"
+                >
+                  ACKNOWLEDGE SECURITIES
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Dynamic Terms of Service Modal (Cyberpunk Glassmorphic) */}
+      <AnimatePresence>
+        {isTermsOpen && (
+          <div className="fixed inset-0 bg-[#03070d]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="bg-[#081120] border border-neon-blue/30 w-full max-w-2xl rounded-2xl overflow-hidden p-6 relative flex flex-col max-h-[85vh] z-50 shadow-[0_0_50px_rgba(157,0,255,0.15)]"
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-neon-purple to-transparent" />
+              
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <div className="text-left">
+                  <h2 className="text-lg font-display font-black text-white tracking-wider flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-neon-purple" />
+                    TERMS OF SERVICE PROTOCOL
+                  </h2>
+                  <p className="text-[10px] font-mono text-gray-400">VERSION CODE: v1.12_PROTOC (IND-SPECIFIC)</p>
+                </div>
+                <button 
+                  onClick={handleCloseTerms}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-neon-red/10 border border-white/10 hover:border-neon-red/30 text-gray-400 hover:text-neon-red flex items-center justify-center text-sm font-black transition-all cursor-pointer"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Terms scroll area */}
+              <div className="flex-1 overflow-y-auto text-left font-mono text-[11px] text-gray-300 space-y-4 pr-1 leading-relaxed custom-scrollbar">
+                <div className="bg-neon-purple/5 border border-neon-purple/20 p-3 rounded-lg text-neon-purple text-[10px]">
+                  <strong>⚡ ACTIVE LEGAL ENGAGEMENT WARNING:</strong> Enrolling into the DevicePulse platform confirms full acceptance of this software operation protocol.
+                </div>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">1. Algorithmic Diagnostic Precision</h3>
+                  <p>
+                    All diagnostics issued by DevicePulse AI, including failure predictions, thermal spikes, battery depletion forecasts, and emergency safe modes are mathematical approximations. While generated via state-of-the-art cognitive models, they cannot replace manual physical equipment diagnostics by accredited engineers.
+                  </p>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">2. Fair Use Limits on Intelligent Synthesis</h3>
+                  <p>
+                    Intelligent synthesis (Gemini core prompts, custom Voice AI diagnostics) is restricted to your individual registered local device profile. Automated script-bypassing, query extraction, or harvesting our diagnostic frameworks is strictly interdicted.
+                  </p>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">3. Subscription Billing & Razorpay Integration</h3>
+                  <p>
+                    All subscriptions (Pro, Ultra Tiers) offer recurring digital asset access. Subscriptions can be canceled at any time. Purchases are safely authenticated using payment credentials powered by Razorpay gateways.
+                  </p>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">4. Limitation of Repair Liability</h3>
+                  <p>
+                    Our Verified Repair Network lists external provider estimates for repair convenience. DevicePulse AI acts as a digital matching registry and does not bear direct liability for any mechanical servicing, part replacement, or physical restoration executed by independent third-party shops.
+                  </p>
+                </section>
+              </div>
+
+              <div className="mt-6 border-t border-white/10 pt-4 flex justify-between items-center bg-[#050b15] -mx-6 -mb-6 p-4">
+                <span className="text-[10px] text-gray-500 font-mono">COMPLIANT WITH THE IT ACT 2000 (INDIA)</span>
+                <button 
+                  onClick={handleCloseTerms}
+                  className="px-5 py-2 bg-neon-purple hover:bg-purple-500 text-white font-black uppercase tracking-wider text-[10px] rounded-lg transition-colors cursor-pointer"
+                >
+                  I ACCEPT TERMS
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FLOATING ACTION TRIGGER Button: Ask Device AI Brain */}
+      <div className="fixed bottom-20 right-6 z-45 sm:bottom-6">
+        <button
+          onClick={() => {
+            setIsChatDrawerOpen(!isChatDrawerOpen);
+            if (typeof playBeep === 'function') {
+              playBeep(440, 660, "sine");
+            }
+          }}
+          className="relative bg-gradient-to-r from-neon-purple to-neon-cyan text-white px-5 py-3.5 rounded-full font-mono text-xs font-black tracking-widest uppercase transition-all flex items-center gap-2.5 shadow-[0_12px_40px_rgba(157,0,255,0.4)] hover:shadow-[0_0_25px_rgba(0,245,255,0.6)] cursor-pointer hover:scale-105 active:scale-95 group"
+          id="ask-device-ai-floater"
+        >
+          <Sparkles className="w-4 h-4 text-white group-hover:animate-spin" />
+          <span>Ask Device AI</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-neon-green inline-block animate-ping" />
+        </button>
+      </div>
+
+      {/* 🔮 3D SLIDE-OVER GLASSMORPHIC AI DEVICE CHAT DRAWERS */}
+      <AnimatePresence>
+        {isChatDrawerOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop slide click to dismiss */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsChatDrawerOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-xs cursor-pointer"
+            />
+
+            {/* Slide-over panel */}
+            <motion.div
+              initial={{ x: "100%", opacity: 0.9 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "100%", opacity: 0.9 }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="relative w-full max-w-md bg-[#040812]/95 border-l border-slate-800 h-full flex flex-col shadow-2xl z-20 backdrop-blur-md"
+            >
+              {/* Core scanning border indicator */}
+              <div className="absolute top-0 bottom-0 left-0 w-[1.5px] bg-gradient-to-b from-neon-purple via-neon-cyan to-transparent animate-pulse" />
+
+              {/* Chat Header */}
+              <div className="p-4.5 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded bg-neon-cyan/15 border border-neon-cyan/35 flex items-center justify-center text-neon-cyan">
+                    <MessageSquare className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <div className="text-left font-mono">
+                    <h3 className="text-sm font-bold text-white tracking-widest uppercase">DEVICE COGNITION AI</h3>
+                    <span className="text-[8px] text-neon-cyan uppercase tracking-widest">LIVE REGISTER TUNER PORT</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsChatDrawerOpen(false)}
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-neon-red/10 border border-white/10 hover:border-neon-red/30 text-gray-400 hover:text-neon-red flex items-center justify-center text-sm font-black transition-all cursor-pointer"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Telemetry Micro Status Strip */}
+              <div className="bg-[#0c1424] px-4.5 py-2 border-b border-white/5 flex items-center justify-between font-mono text-[9px] text-gray-400 select-none">
+                <span className="flex items-center gap-1">
+                  <Cpu className="w-3 h-3 text-neon-cyan" />
+                  CPU Temp: <strong className="text-white">{telemetry.cpuTemp}°C</strong>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-neon-green" />
+                  Battery: <strong className="text-white">{telemetry.batteryScore}%</strong>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Shield className="w-3 h-3 text-neon-purple" />
+                  System Health: <strong className="text-neon-cyan">{overallHealthScore}%</strong>
+                </span>
+              </div>
+
+              {/* Chat Message Scrollport */}
+              <div className="flex-1 overflow-y-auto p-4.5 space-y-4 custom-scrollbar">
+                {chatMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col max-w-[85%] font-mono text-xs ${
+                      msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
+                    }`}
+                  >
+                    <span className="text-[8px] text-gray-500 mb-1 select-none">
+                      {msg.role === "user" ? "SYSTEM REGISTER INQUIRY" : "DEVICE COGNITIVE ASSISTANT"}
+                    </span>
+                    <div
+                      className={`p-3 rounded-2xl text-left border leading-relaxed whitespace-pre-wrap ${
+                        msg.role === "user"
+                          ? "bg-neon-purple/20 border-neon-purple/40 text-white rounded-tr-none"
+                          : "bg-slate-900/90 border-slate-800 text-gray-200 rounded-tl-none"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isChatLoading && (
+                  <div className="flex flex-col max-w-[80%] items-start font-mono text-xs mr-auto">
+                    <span className="text-[8px] text-gray-500 mb-1">AI IS READING HARDWARE REGISTERS...</span>
+                    <div className="p-3 bg-slate-900/50 border border-slate-800 rounded-2xl rounded-tl-none flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Preset Sample Help Chips to click */}
+              <div className="p-3 bg-slate-950/80 border-t border-white/5 select-none text-left">
+                <span className="text-[8px] font-mono text-gray-500 uppercase block mb-1.5 font-bold">Suggested Quick Diagnostics</span>
+                <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                  {[
+                    "Why is my device heating?",
+                    "Why is battery draining fast?",
+                    "Is there background ram pressure?",
+                    "Explain my 180-day hardware risk roadmap"
+                  ].map((preset, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setChatInput(preset);
+                        if (typeof playBeep === 'function') {
+                          playBeep(330, 440, "sine");
+                        }
+                      }}
+                      className="px-2 py-1 text-[9px] font-mono text-gray-400 bg-white/5 hover:bg-neon-cyan/15 hover:text-white border border-slate-800 hover:border-neon-cyan/40 rounded transition-all cursor-pointer"
+                    >
+                      💡 {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input Chat Box */}
+              <form onSubmit={handleSendChatMessage} className="p-4 bg-slate-950 border-t border-white/10 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Ask Device AI about registers..."
+                  className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 text-gray-100 placeholder-gray-500 rounded-xl font-mono text-xs focus:outline-none focus:border-neon-cyan"
+                />
+                <button
+                  type="submit"
+                  disabled={isChatLoading || !chatInput.trim()}
+                  className="p-2.5 rounded-xl bg-neon-cyan hover:bg-opacity-80 disabled:opacity-50 text-black font-bold transition-all flex items-center justify-center cursor-pointer shadow-[0_4px_12px_rgba(0,240,255,0.25)]"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 🚀 HIGH-TECH AI BOOST OPTIMIZING FULLSCREEN PORTAL OVERLAY */}
+      <AnimatePresence>
+        {isAiBoosting && (
+          <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[#00040a] opacity-90 pointer-events-none" />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(157,0,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(157,0,255,0.015)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+
+            {/* Glowing cosmic portals and particles */}
+            <motion.div
+              animate={{
+                rotate: 360,
+                scale: [1, 1.05, 1],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 5,
+                ease: "linear"
+              }}
+              className="relative w-48 h-48 rounded-full border border-dashed border-neon-purple/50 flex items-center justify-center shadow-[0_0_80px_rgba(157,0,255,0.25)]"
+            >
+              <div className="absolute inset-6 rounded-full border border-dotted border-neon-cyan/50 animate-spin duration-700" />
+              <div className="absolute inset-10 rounded-full bg-radial from-[#9d00ff]/20 to-transparent animate-pulse" />
+              <Sparkles className="w-14 h-14 text-white animate-bounce" />
+            </motion.div>
+
+            <div className="max-w-md text-center mt-10 font-mono space-y-4">
+              <h1 className="text-lg font-black font-display text-white tracking-widest uppercase animate-pulse">
+                DEVICEPULSE AI DEEP ACCELERATOR ACTIVE
+              </h1>
+              
+              <div className="w-64 h-2 bg-slate-900 border border-slate-800 rounded-full overflow-hidden p-[1px] mx-auto">
+                <div 
+                  className="h-full bg-gradient-to-r from-neon-purple to-neon-cyan rounded-full transition-all duration-300"
+                  style={{ width: `${(aiBoostStep / 5) * 100}%` }}
+                />
+              </div>
+
+              <div className="bg-[#03060c] border border-slate-850 p-4 rounded-xl min-h-[140px] text-left text-[11px] text-gray-300 space-y-1.5 font-mono select-none overflow-y-auto max-h-48 custom-scrollbar">
+                {aiBoostLogs.map((log, idx) => (
+                  <div key={idx} className={idx === aiBoostLogs.length - 1 ? "text-neon-cyan font-bold" : "text-gray-400"}>
+                    {idx === aiBoostLogs.length - 1 && "➜ "} {log}
+                  </div>
+                ))}
+              </div>
+
+              <span className="block text-[9px] text-gray-500 uppercase tracking-widest leading-relaxed">
+                DO NOT DISCONNECT OR SWITCH FROM THIS PORTAL DURING TUNING SECTOR SHUNTS
+              </span>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

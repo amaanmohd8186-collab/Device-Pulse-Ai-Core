@@ -8,12 +8,9 @@ interface HeaderProps {
   isPro: boolean;
   subscriptionTier: "FREE" | "PRO" | "ULTRA";
   onUpgrade: () => void;
-  user: any;
-  onSignIn: () => void;
-  onLogout: () => void;
 }
 
-export default function Header({ stressLevel, isScanning, score, isPro, subscriptionTier, onUpgrade, user, onSignIn, onLogout }: HeaderProps) {
+export default function Header({ stressLevel, isScanning, score, isPro, subscriptionTier, onUpgrade }: HeaderProps) {
   const [deviceSpec, setDeviceSpec] = useState({
     cpuCores: "8 Logical Threads",
     platform: "Linux/Android Core",
@@ -155,37 +152,6 @@ export default function Header({ stressLevel, isScanning, score, isPro, subscrip
           </div>
           {subscriptionTier === "FREE" && <ArrowRight className="w-3 h-3 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />}
         </button>
-
-        {/* User Authentication state */}
-        {user ? (
-          <div className="flex items-center gap-2.5 bg-slate-950/85 border border-white/10 px-3 py-1 rounded-full">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName || ""} className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-neon-blue/20 text-neon-blue font-black flex items-center justify-center text-[10px] uppercase border border-neon-blue/30">
-                {user.displayName ? user.displayName[0] : "U"}
-              </div>
-            )}
-            <div className="hidden sm:block text-left text-[10px] leading-tight">
-              <span className="text-white font-bold block truncate max-w-[90px]">{user.displayName || "User"}</span>
-              <span className="text-gray-500 text-[8px] block truncate max-w-[90px]">{user.email || ""}</span>
-            </div>
-            <button
-              onClick={onLogout}
-              className="text-[9px] hover:text-neon-red text-gray-400 font-bold uppercase tracking-wider px-2 py-1 bg-white/5 hover:bg-neon-red/10 border border-white/5 hover:border-neon-red/20 rounded-md transition-colors cursor-pointer"
-            >
-              Sign out
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={onSignIn}
-            className="px-4 py-1.5 bg-neon-blue/10 hover:bg-neon-blue/25 border border-neon-blue/40 hover:border-neon-blue text-neon-blue font-bold rounded-full uppercase tracking-wider text-[10px] transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-[0_0_10px_rgba(0,240,255,0.15)]"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-neon-blue animate-pulse" />
-            Sign In with Google
-          </button>
-        )}
       </div>
     </header>
   );

@@ -14,21 +14,31 @@ import {
   Rocket
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { getCurrentUser } from "../lib/auth";
 
 interface SubscriptionPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUnlockPro: () => void;
-  user: any;
-  onSignIn: () => void;
 }
 
 const RAZORPAY_PLAN_ID = "plan_StVujNG2NZOltP";
 const RAZORPAY_SUBSCRIPTION_ID = "sub_StW5Qo0UJJY3gX"; // Provided by user as active sub
 const RAZORPAY_KEY_ID = (import.meta as any).env.VITE_RAZORPAY_KEY_ID || "rzp_test_Sr6xJPpy2gxzwf";
 
-export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro, user, onSignIn }: SubscriptionPaymentModalProps) {
+const getLocalGuestUser = () => {
+  let gid = localStorage.getItem("devicepulse_guest_uid");
+  if (!gid) {
+    gid = "guest_" + Math.random().toString(36).substring(2, 11) + "_" + Math.random().toString(36).substring(2, 11);
+    localStorage.setItem("devicepulse_guest_uid", gid);
+  }
+  return {
+    uid: gid,
+    email: "guest_nexus@devicepulse.in",
+    displayName: "Guest Specialist"
+  };
+};
+
+export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro }: SubscriptionPaymentModalProps) {
   const [paymentStep, setPaymentStep] = useState<"plans" | "processing" | "success">("plans");
   const [isProcessing, setIsProcessing] = useState(false);
   const [manualSubId, setManualSubId] = useState("");
@@ -56,7 +66,7 @@ export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro, user, o
     playBeep(600, 100, "sine");
     setIsProcessing(true);
 
-    const user = getCurrentUser();
+    const user = getLocalGuestUser();
     
     let subscriptionId = "";
     let isSimulated = false;
@@ -172,12 +182,7 @@ export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro, user, o
     playBeep(440, 120, "sine");
 
     try {
-      const user = getCurrentUser();
-      if (!user) {
-        setSyncError("Please sign in first.");
-        setManualSyncLoading(false);
-        return;
-      }
+      const user = getLocalGuestUser();
 
       console.log("Associating manual license key:", manualSubId.trim(), "for user:", user.uid);
       const res = await fetch("/api/subscription/associate", {
@@ -209,7 +214,7 @@ export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro, user, o
 
   const triggerDirectSimulation = async () => {
     // If checkout script fails or offline, provide a luxury instant unlock trigger
-    const user = getCurrentUser();
+    const user = getLocalGuestUser();
     if (user) {
       await fetch("/api/subscription/associate", {
         method: "POST",
@@ -341,51 +346,21 @@ export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro, user, o
                     <div className="h-[1px] bg-white/10 flex-1" />
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-3">
                     <a
                       href="https://rzp.io/rzp/3qWxZE9y"
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={async () => {
-                        playBeep(440, 100, "sine");
+                        playBeep(523, 100, "sine");
                         // Pre-populate so that they can easily verify if they want
                         setManualSubId("sub_StW5Qo0UJJY3gX");
                       }}
-                      className="w-full h-12 bg-transparent hover:bg-[#9d00ff]/10 border border-[#9d00ff]/40 hover:border-[#9d00ff] text-[#b33bfb] font-black rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-1.5 group cursor-pointer"
+                      className="w-full h-12 bg-[#9d00ff]/10 hover:bg-[#9d00ff]/20 border border-[#9d00ff]/40 hover:border-[#9d00ff] text-[#b33bfb] font-black rounded-xl uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-1.5 group cursor-pointer"
                     >
                       Open Pay Link (INR 49)
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                     </a>
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        playBeep(880, 150, "triangle");
-                        const user = getCurrentUser();
-                        if (user) {
-                          try {
-                            await fetch("/api/subscription/associate", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                uid: user.uid,
-                                subscriptionId: "sub_manual_" + Math.random().toString(36).substring(2, 10),
-                                planId: RAZORPAY_PLAN_ID,
-                                status: "PRO"
-                              })
-                            });
-                          } catch (e) {
-                            console.error("Manual direct bypass association failed", e);
-                          }
-                        }
-                        onUnlockPro();
-                        setPaymentStep("success");
-                      }}
-                      className="w-full h-12 bg-neon-green/10 hover:bg-neon-green/20 border border-neon-green/35 text-neon-green font-black rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      Instant Free Activation
-                      <Sparkles className="w-3.5 h-3.5 fill-neon-green" />
-                    </button>
                   </div>
 
                   {/* Manual ID Input Section */}
@@ -397,23 +372,6 @@ export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro, user, o
                       </p>
                     </div>
                     
-                    {!user ? (
-                      <div className="space-y-2 pt-1">
-                        <p className="text-[10px] text-orange-400 font-semibold text-left">
-                          ⚠️ Connection required. Sign in first to link your subscription code to your backend profile:
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            playBeep(520, 100, "sine");
-                            onSignIn();
-                          }}
-                          className="w-full h-10 bg-neon-blue hover:bg-[#00e0ef] text-[#040813] font-black rounded-lg uppercase tracking-wider text-[10px] transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          Sign In with Google Account
-                        </button>
-                      </div>
-                    ) : (
                       <>
                         <div className="flex gap-2">
                           <input
@@ -440,10 +398,9 @@ export function SubscriptionPaymentModal({ isOpen, onClose, onUnlockPro, user, o
                         )}
                         
                         <p className="text-[9px] text-[#00f0ff]/80 font-mono text-left">
-                          Connected as: <span className="text-white">{user.email}</span>
+                          Device Profile token: <span className="text-white font-bold">{getLocalGuestUser().uid}</span>
                         </p>
                       </>
-                    )}
                   </div>
                 </div>
 
