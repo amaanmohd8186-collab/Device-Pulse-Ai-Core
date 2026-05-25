@@ -4,6 +4,9 @@
 html, body {
   background-color: #03070d;
   color: #f3f4f6;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @theme {

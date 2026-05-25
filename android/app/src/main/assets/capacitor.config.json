@@ -1,0 +1,8 @@
+{
+	"appId": "com.devicepulse.ai",
+	"appName": "DevicePulse AI",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	}
+}
