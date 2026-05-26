@@ -8,9 +8,22 @@ interface HeaderProps {
   isPro: boolean;
   subscriptionTier: "FREE" | "PRO" | "ULTRA";
   onUpgrade: () => void;
+  onTriggerExit: () => void;
+  onToggleNotifications: () => void;
+  unreadNotificationsCount: number;
 }
 
-export default function Header({ stressLevel, isScanning, score, isPro, subscriptionTier, onUpgrade }: HeaderProps) {
+export default function Header({ 
+  stressLevel, 
+  isScanning, 
+  score, 
+  isPro, 
+  subscriptionTier, 
+  onUpgrade,
+  onTriggerExit,
+  onToggleNotifications,
+  unreadNotificationsCount
+}: HeaderProps) {
   const [deviceSpec, setDeviceSpec] = useState({
     cpuCores: "8 Logical Threads",
     platform: "Linux/Android Core",
@@ -151,6 +164,39 @@ export default function Header({ stressLevel, isScanning, score, isPro, subscrip
             <span className="font-black text-xs tracking-tighter uppercase">{subscriptionTier}</span>
           </div>
           {subscriptionTier === "FREE" && <ArrowRight className="w-3 h-3 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />}
+        </button>
+        {/* Advanced Notifications (Only active for Pro/Ultra) */}
+        <button
+          onClick={onToggleNotifications}
+          className={`relative p-2 rounded-lg border transition-all ${
+            subscriptionTier === "FREE"
+              ? "border-gray-800 bg-gray-900/50 text-gray-600 opacity-50 cursor-not-allowed" 
+              : "border-neon-purple/40 bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 hover:scale-105"
+          }`}
+          title={subscriptionTier === "FREE" ? "Upgrade to access Advanced Network Notifications" : "View Advanced Network Alerts"}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          {subscriptionTier !== "FREE" && unreadNotificationsCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-neon-purple items-center justify-center text-[9px] font-bold text-white">
+                {unreadNotificationsCount}
+              </span>
+            </span>
+          )}
+        </button>
+
+        {/* Exit App Button */}
+        <button
+          onClick={onTriggerExit}
+          className="p-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all hover:scale-105"
+          title="Exit Application"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
         </button>
       </div>
     </header>

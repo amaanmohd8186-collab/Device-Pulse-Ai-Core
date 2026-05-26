@@ -58,6 +58,7 @@ import VoiceAssistantScreen from "./components/VoiceAssistantScreen";
 import { RepairNetworkScreen } from "./components/RepairNetworkScreen";
 import { PitchDeckScreen } from "./components/PitchDeckScreen";
 import { SubscriptionPaymentModal } from "./components/SubscriptionPaymentModal";
+import { App as CapacitorApp } from '@capacitor/app';
 import SystemLogs from "./components/SystemLogs";
 import Footer from "./components/Footer";
 import { TelemetryState, SmartAlert, GeminiDiagnosticReport, TelemetryHistoryPoint } from "./types";
@@ -158,6 +159,30 @@ export default function App() {
   // Privacy Policy and Terms of Service dialogue states
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  
+  // Advanced Notifications State
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [advancedNotifications, setAdvancedNotifications] = useState([
+    { id: 1, title: "Kernel Process Anomaly", description: "Background process 'android.vold' consuming high I/O randomly. Recommended: Clean cache.", severity: "high", time: "12 mins ago", read: false },
+    { id: 2, title: "Battery Cycle Warning", description: "Charge cycle crossed 420. Estimated 12% total capacity degraded relative to 2026 baseline.", severity: "medium", time: "2 hours ago", read: false },
+    { id: 3, title: "Network Telemetry", description: "Average latency to closest edge node stabilized at 12ms over the last week. No dropped packets.", severity: "low", time: "5 hours ago", read: false }
+  ]);
+
+  const unreadCount = advancedNotifications.filter(n => !n.read).length;
+
+  const handleExitApp = async () => {
+    try {
+      if (typeof CapacitorApp !== 'undefined') {
+        await CapacitorApp.exitApp();
+      }
+    } catch (e) {
+      console.log("Exit app only supported on native devices.");
+    }
+  };
+
+  const markAllAsRead = () => {
+    setAdvancedNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
   const [isDonateOpen, setIsDonateOpen] = useState(false);
 
   // High intensity 3D Mouse Parallax Coordinates
@@ -856,7 +881,68 @@ export default function App() {
         isPro={isProUnlocked}
         subscriptionTier={subscriptionStatus}
         onUpgrade={() => setIsPayModalOpen(true)}
+        onTriggerExit={handleExitApp}
+        onToggleNotifications={() => {
+          if (isProUnlocked) setShowNotifications(prev => !prev);
+          else setIsPayModalOpen(true);
+        }}
+        unreadNotificationsCount={unreadCount}
       />
+
+      {/* Advanced Notifications Panel */}
+      <AnimatePresence>
+        {showNotifications && isProUnlocked && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="absolute top-20 right-4 w-96 max-w-[calc(100vw-2rem)] bg-[#03070d]/95 border border-neon-purple/40 rounded-xl shadow-[0_10px_40px_rgba(157,0,255,0.2)] backdrop-blur-xl z-50 overflow-hidden"
+          >
+            <div className="p-4 border-b border-neon-purple/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="font-display font-medium text-white flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-neon-purple" />
+                Advanced Network Alerts
+              </h3>
+              <div className="flex items-center gap-3">
+                <button onClick={markAllAsRead} className="text-[10px] uppercase tracking-wider text-neon-purple hover:text-white transition-colors">
+                  Mark all read
+                </button>
+                <button onClick={() => setShowNotifications(false)} className="text-gray-500 hover:text-white transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto cyber-scrollbar">
+              {advancedNotifications.length === 0 && (
+                <div className="p-6 text-center text-sm text-gray-500 font-mono">No advanced notifications.</div>
+              )}
+              {advancedNotifications.map(notification => (
+                <div key={notification.id} className={`p-4 border-b border-gray-800/50 transition-colors ${!notification.read ? 'bg-neon-purple/5 relative' : ''}`}>
+                  {!notification.read && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-neon-purple" />}
+                  <div className="flex items-start justify-between mb-1 gap-2">
+                    <h4 className="text-sm font-medium text-gray-200">
+                      {notification.title}
+                    </h4>
+                    <span className={`shrink-0 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                      notification.severity === 'high' ? 'bg-red-500/10 border border-red-500/30 text-red-400' :
+                      notification.severity === 'medium' ? 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-500' :
+                      'bg-green-500/10 border border-green-500/30 text-green-400'
+                    }`}>
+                      {notification.severity}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-2 leading-relaxed">
+                    {notification.description}
+                  </p>
+                  <div className="text-[9px] text-gray-600 font-mono">
+                    {notification.time}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Container Core */}
       <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6 relative pb-28">
