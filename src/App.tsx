@@ -12,6 +12,9 @@ import {
   Trash2, 
   CheckCircle2, 
   ShieldAlert, 
+  Monitor,
+  Wifi,
+  Ghost,
   Sliders, 
   Terminal, 
   Sparkles,
@@ -27,6 +30,7 @@ import {
   Globe,
   SlidersHorizontal,
   Home,
+  Cloud,
   MessageSquare,
   Power,
   Play,
@@ -57,6 +61,12 @@ import MetricCard from "./components/MetricCard";
 import VoiceAssistantScreen from "./components/VoiceAssistantScreen";
 import { RepairNetworkScreen } from "./components/RepairNetworkScreen";
 import { PitchDeckScreen } from "./components/PitchDeckScreen";
+import { SecurityPrivacyScreen } from "./components/SecurityPrivacyScreen";
+import { DataBackupScreen } from "./components/DataBackupScreen";
+import { AppCleanerScreen } from "./components/AppCleanerScreen";
+import { HardwareDiagnosticsScreen } from "./components/HardwareDiagnosticsScreen";
+import { NetworkAnalyzerScreen } from "./components/NetworkAnalyzerScreen";
+import { PhantomDrainTrackerScreen } from "./components/PhantomDrainTrackerScreen";
 import { SubscriptionPaymentModal } from "./components/SubscriptionPaymentModal";
 import { App as CapacitorApp } from '@capacitor/app';
 import SystemLogs from "./components/SystemLogs";
@@ -124,8 +134,7 @@ export default function App() {
   const [alerts, setAlerts] = useState<SmartAlert[]>([]);
   
   // YouTube Style 3D Tabs Management
-  // Home (AI Core), Battery, Thermal, Perf, Storage, Voice Assistant, Repair Finder, Pitch Deck
-  const [activeTab, setActiveTab] = useState<"home" | "battery" | "thermal" | "performance" | "storage" | "ai-predictions" | "voice-assistant" | "repair-network" | "pitch-deck">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "battery" | "thermal" | "performance" | "storage" | "ai-predictions" | "voice-assistant" | "repair-network" | "pitch-deck" | "security-scan" | "data-backup" | "app-cleaner" | "hardware" | "network" | "phantom">("home");
 
   // Premium / Pro unlocked status
   const [isProUnlocked, setIsProUnlocked] = useState(() => {
@@ -2712,11 +2721,179 @@ export default function App() {
           </motion.div>
         )}
 
+        {/* TAB 10: SECURE SCANNER */}
+        {activeTab === "security-scan" && (
+          <motion.div
+            key="security-scan"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className={`text-left w-full relative min-h-[500px] ${!isProUnlocked ? "overflow-hidden" : ""}`}
+          >
+            {!isProUnlocked && (
+              <div className="absolute inset-0 bg-[#03070d]/80 backdrop-blur-md z-20 flex items-center justify-center p-6 text-center rounded-3xl overflow-hidden border border-slate-800">
+                <div className="max-w-sm space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 mx-auto">
+                    <ShieldAlert className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-white uppercase tracking-widest">Security Scanner Locked</h3>
+                  <p className="text-sm text-gray-400">Upgrade to PRO or ULTRA to activate Quantum Grade Privacy Scanner and real-time deep packet inspection.</p>
+                  <button onClick={() => setIsPayModalOpen(true)} className="w-full py-3 bg-teal-500 text-teal-950 font-bold uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] transition-all">
+                    Unlock Security
+                  </button>
+                </div>
+              </div>
+            )}
+            <SecurityPrivacyScreen />
+          </motion.div>
+        )}
+
+        {/* TAB 11: DATA BACKUP */}
+        {activeTab === "data-backup" && (
+          <motion.div
+            key="data-backup"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className={`text-left w-full relative min-h-[500px] ${!isProUnlocked ? "overflow-hidden" : ""}`}
+          >
+            {!isProUnlocked && (
+              <div className="absolute inset-0 bg-[#03070d]/80 backdrop-blur-md z-20 flex items-center justify-center p-6 text-center rounded-3xl overflow-hidden border border-slate-800">
+                <div className="max-w-sm space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mx-auto">
+                    <Cloud className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-white uppercase tracking-widest">Cloud Backup Locked</h3>
+                  <p className="text-sm text-gray-400">Upgrade to PRO or ULTRA to secure your contacts, media, and encryption keys to the decentralized system.</p>
+                  <button onClick={() => setIsPayModalOpen(true)} className="w-full py-3 bg-indigo-500 text-white font-bold uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all">
+                    Unlock Backup
+                  </button>
+                </div>
+              </div>
+            )}
+            <DataBackupScreen />
+          </motion.div>
+        )}
+
+        {/* TAB 12: APP CLEANER */}
+        {activeTab === "app-cleaner" && (
+          <motion.div
+            key="app-cleaner"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className={`text-left w-full relative min-h-[500px] ${!isProUnlocked ? "overflow-hidden" : ""}`}
+          >
+            {!isProUnlocked && (
+              <div className="absolute inset-0 bg-[#03070d]/80 backdrop-blur-md z-20 flex items-center justify-center p-6 text-center rounded-3xl overflow-hidden border border-slate-800">
+                <div className="max-w-sm space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center text-fuchsia-400 mx-auto">
+                    <Trash2 className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-white uppercase tracking-widest">System Cleaner Locked</h3>
+                  <p className="text-sm text-gray-400">Upgrade to PRO or ULTRA to eradicate ghost caches, dormant apps, and free up gigabytes of dead storage.</p>
+                  <button onClick={() => setIsPayModalOpen(true)} className="w-full py-3 bg-fuchsia-600 text-white font-bold uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(217,70,239,0.5)] transition-all">
+                    Unlock Cleaner
+                  </button>
+                </div>
+              </div>
+            )}
+            <AppCleanerScreen />
+          </motion.div>
+        )}
+
+        {/* TAB 13: HARDWARE DIAGNOSTICS */}
+        {activeTab === "hardware" && (
+          <motion.div
+            key="hardware"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className={`text-left w-full relative min-h-[500px] ${!isProUnlocked ? "overflow-hidden" : ""}`}
+          >
+            {!isProUnlocked && (
+              <div className="absolute inset-0 bg-[#03070d]/80 backdrop-blur-md z-20 flex items-center justify-center p-6 text-center rounded-3xl overflow-hidden border border-slate-800">
+                <div className="max-w-sm space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 mx-auto">
+                    <Monitor className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-white uppercase tracking-widest">Hardware Diag Locked</h3>
+                  <p className="text-sm text-gray-400">Upgrade to PRO or ULTRA to access sensor and actuator testing modules.</p>
+                  <button onClick={() => setIsPayModalOpen(true)} className="w-full py-3 bg-orange-500 text-orange-950 font-bold uppercase tracking-widest rounded-xl transition-all">
+                    Unlock Diagnostics
+                  </button>
+                </div>
+              </div>
+            )}
+            <HardwareDiagnosticsScreen />
+          </motion.div>
+        )}
+
+        {/* TAB 14: NETWORK ANALYZER */}
+        {activeTab === "network" && (
+          <motion.div
+            key="network"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className={`text-left w-full relative min-h-[500px] ${!isProUnlocked ? "overflow-hidden" : ""}`}
+          >
+            {!isProUnlocked && (
+              <div className="absolute inset-0 bg-[#03070d]/80 backdrop-blur-md z-20 flex items-center justify-center p-6 text-center rounded-3xl overflow-hidden border border-slate-800">
+                <div className="max-w-sm space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 mx-auto">
+                    <Wifi className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-white uppercase tracking-widest">Network Analyzer Locked</h3>
+                  <p className="text-sm text-gray-400">Upgrade to PRO or ULTRA for live cellular dBm tracking and Wi-Fi spectrum topology analysis.</p>
+                  <button onClick={() => setIsPayModalOpen(true)} className="w-full py-3 bg-sky-600 text-white font-bold uppercase tracking-widest rounded-xl transition-all">
+                    Unlock Analyzer
+                  </button>
+                </div>
+              </div>
+            )}
+            <NetworkAnalyzerScreen />
+          </motion.div>
+        )}
+
+        {/* TAB 15: PHANTOM DRAIN TRACKER */}
+        {activeTab === "phantom" && (
+          <motion.div
+            key="phantom"
+            initial={{ opacity: 0, scale: 0.99, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -15 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className={`text-left w-full relative min-h-[500px] ${!isProUnlocked ? "overflow-hidden" : ""}`}
+          >
+            {!isProUnlocked && (
+              <div className="absolute inset-0 bg-[#03070d]/80 backdrop-blur-md z-20 flex items-center justify-center p-6 text-center rounded-3xl overflow-hidden border border-slate-800">
+                <div className="max-w-sm space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 mx-auto">
+                    <Ghost className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-white uppercase tracking-widest">Phantom Drain Locked</h3>
+                  <p className="text-sm text-gray-400">Upgrade to PRO or ULTRA to uncover hidden background wakelocks and app hijacking.</p>
+                  <button onClick={() => setIsPayModalOpen(true)} className="w-full py-3 bg-red-600 text-white font-bold uppercase tracking-widest rounded-xl transition-all">
+                    Unlock Tracker
+                  </button>
+                </div>
+              </div>
+            )}
+            <PhantomDrainTrackerScreen />
+          </motion.div>
+        )}
+
         </AnimatePresence>
       </main>
 
       {/* FLOATING HOLOGRAPHIC BOTTOM NAVIGATION DOCK (YOUTUBE STYLE) */}
-      <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[94%] max-w-2xl bg-[#081120]/90 border border-neon-blue/20 p-2 rounded-2xl flex items-center justify-between gap-1 shadow-[0_10px_35px_rgba(0,0,0,0.8)] z-40 backdrop-blur-md select-none">
+      <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl bg-[#081120]/90 border border-neon-blue/20 p-2 rounded-2xl flex items-center gap-1 shadow-[0_10px_35px_rgba(0,0,0,0.8)] z-40 backdrop-blur-md select-none overflow-x-auto cyber-scrollbar [&::-webkit-scrollbar]:hidden">
         
         {/* Holographic scanning line traversing button items */}
         <div className="absolute inset-x-4 h-[1px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-20 pointer-events-none" style={{ top: "1px" }} />
@@ -2724,7 +2901,7 @@ export default function App() {
         {/* HOME (AI Core Dashboard) */}
         <button
           onClick={() => setActiveTab("home")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "home" ? "bg-neon-blue/10 text-white" : "text-gray-400 hover:text-white"
           }`}
         >
@@ -2736,7 +2913,7 @@ export default function App() {
         {/* BATTERY tab */}
         <button
           onClick={() => setActiveTab("battery")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "battery" ? "bg-neon-green/10 text-white" : "text-gray-400 hover:text-white"
           }`}
         >
@@ -2748,7 +2925,7 @@ export default function App() {
         {/* THERMAL */}
         <button
           onClick={() => setActiveTab("thermal")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "thermal" ? "bg-neon-orange/10 text-white" : "text-gray-400 hover:text-white"
           }`}
         >
@@ -2760,7 +2937,7 @@ export default function App() {
         {/* PERFORMANCE */}
         <button
           onClick={() => setActiveTab("performance")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "performance" ? "bg-neon-purple/10 text-white" : "text-gray-400 hover:text-white"
           }`}
         >
@@ -2772,7 +2949,7 @@ export default function App() {
         {/* STORAGE */}
         <button
           onClick={() => setActiveTab("storage")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "storage" ? "bg-blue-500/10 text-white" : "text-gray-400 hover:text-white"
           }`}
         >
@@ -2784,7 +2961,7 @@ export default function App() {
         {/* VOICE ASSISTANT */}
         <button
           onClick={() => setActiveTab("voice-assistant")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "voice-assistant" ? "bg-neon-cyan/10 text-white" : "text-gray-400 hover:text-white"
           }`}
         >
@@ -2796,7 +2973,7 @@ export default function App() {
         {/* REPAIR locator */}
         <button
           onClick={() => setActiveTab("repair-network")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "repair-network" ? "bg-[#092233] text-white" : "text-gray-400 hover:text-white"
           }`}
         >
@@ -2808,13 +2985,85 @@ export default function App() {
         {/* PITCH DECK */}
         <button
           onClick={() => setActiveTab("pitch-deck")}
-          className={`flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
             activeTab === "pitch-deck" ? "bg-[#252514] text-white" : "text-gray-400 hover:text-white"
           }`}
         >
           <DollarSign className={`w-4 h-4 transition-transform ${activeTab === "pitch-deck" ? "scale-110 text-neon-yellow font-bold" : "scale-95"}`} />
           <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase font-medium">Pitch</span>
           {activeTab === "pitch-deck" && <span className="absolute bottom-1 w-1 h-1 bg-neon-yellow rounded-full animate-pulse" />}
+        </button>
+
+        {/* SECURITY SCANNER */}
+        <button
+          onClick={() => setActiveTab("security-scan")}
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+            activeTab === "security-scan" ? "bg-teal-500/10 text-white" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          <ShieldAlert className={`w-4 h-4 transition-transform ${activeTab === "security-scan" ? "scale-110 text-teal-400 font-bold drop-shadow-[0_0_5px_rgba(20,184,166,0.4)]" : "scale-95"}`} />
+          <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase">Security</span>
+          {activeTab === "security-scan" && <span className="absolute bottom-1 w-1 h-1 bg-teal-400 rounded-full animate-pulse" />}
+        </button>
+
+        {/* CLEANER */}
+        <button
+          onClick={() => setActiveTab("app-cleaner")}
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+            activeTab === "app-cleaner" ? "bg-fuchsia-500/10 text-white" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          <Trash2 className={`w-4 h-4 transition-transform ${activeTab === "app-cleaner" ? "scale-110 text-fuchsia-400 font-bold drop-shadow-[0_0_5px_rgba(217,70,239,0.4)]" : "scale-95"}`} />
+          <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase">Cleaner</span>
+          {activeTab === "app-cleaner" && <span className="absolute bottom-1 w-1 h-1 bg-fuchsia-400 rounded-full animate-pulse" />}
+        </button>
+
+        {/* BACKUP */}
+        <button
+          onClick={() => setActiveTab("data-backup")}
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+            activeTab === "data-backup" ? "bg-indigo-500/10 text-white" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          <Cloud className={`w-4 h-4 transition-transform ${activeTab === "data-backup" ? "scale-110 text-indigo-400 font-bold drop-shadow-[0_0_5px_rgba(99,102,241,0.4)]" : "scale-95"}`} />
+          <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase">Backup</span>
+          {activeTab === "data-backup" && <span className="absolute bottom-1 w-1 h-1 bg-indigo-400 rounded-full animate-pulse" />}
+        </button>
+
+        {/* HARDWARE DIAGNOSTICS */}
+        <button
+          onClick={() => setActiveTab("hardware")}
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+            activeTab === "hardware" ? "bg-orange-500/10 text-white" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          <Monitor className={`w-4 h-4 transition-transform ${activeTab === "hardware" ? "scale-110 text-orange-400 font-bold drop-shadow-[0_0_5px_rgba(249,115,22,0.4)]" : "scale-95"}`} />
+          <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase">Hardware</span>
+          {activeTab === "hardware" && <span className="absolute bottom-1 w-1 h-1 bg-orange-400 rounded-full animate-pulse" />}
+        </button>
+
+        {/* NETWORK ANALYZER */}
+        <button
+          onClick={() => setActiveTab("network")}
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+            activeTab === "network" ? "bg-sky-500/10 text-white" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          <Wifi className={`w-4 h-4 transition-transform ${activeTab === "network" ? "scale-110 text-sky-400 font-bold drop-shadow-[0_0_5px_rgba(14,165,233,0.4)]" : "scale-95"}`} />
+          <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase">Network</span>
+          {activeTab === "network" && <span className="absolute bottom-1 w-1 h-1 bg-sky-400 rounded-full animate-pulse" />}
+        </button>
+
+        {/* PHANTOM DRAIN */}
+        <button
+          onClick={() => setActiveTab("phantom")}
+          className={`shrink-0 min-w-[68px] flex-1 py-1.5 flex flex-col items-center justify-center rounded-xl transition-all relative ${
+            activeTab === "phantom" ? "bg-red-500/10 text-white" : "text-gray-400 hover:text-white"
+          }`}
+        >
+          <Ghost className={`w-4 h-4 transition-transform ${activeTab === "phantom" ? "scale-110 text-red-500 font-bold drop-shadow-[0_0_5px_rgba(239,68,68,0.4)]" : "scale-95"}`} />
+          <span className="text-[8.5px] font-mono mt-1 scale-90 font-medium tracking-tighter uppercase">Phantom</span>
+          {activeTab === "phantom" && <span className="absolute bottom-1 w-1 h-1 bg-red-500 rounded-full animate-pulse" />}
         </button>
 
       </nav>
