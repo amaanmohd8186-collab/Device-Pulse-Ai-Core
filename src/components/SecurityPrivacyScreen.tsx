@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Shield, ShieldAlert, ShieldCheck, Lock, Smartphone, Eye, Activity, History, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Lock, Smartphone, Eye, Activity, History, AlertTriangle, CheckCircle2, Terminal } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export function SecurityPrivacyScreen() {

@@ -3079,9 +3079,10 @@ export default function App() {
       <SubscriptionPaymentModal 
         isOpen={isPayModalOpen}
         onClose={() => setIsPayModalOpen(false)}
-        onUnlockPro={() => {
+        onUnlockPro={(tier) => {
           setIsProUnlocked(true);
           localStorage.setItem("devicepulse_pro_unlocked", "true");
+          setSubscriptionStatus(tier);
         }}
       />
 
@@ -3222,11 +3223,11 @@ export default function App() {
         {isPrivacyOpen && (
           <div className="fixed inset-0 bg-[#03070d]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="bg-[#081120] border border-neon-blue/30 w-full max-w-2xl rounded-2xl overflow-hidden p-6 relative flex flex-col max-h-[85vh] z-50 shadow-[0_0_50px_rgba(0,240,255,0.15)]"
+               initial={{ opacity: 0, scale: 0.95, y: 15 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.95, y: 15 }}
+               transition={{ duration: 0.25, ease: "easeOut" }}
+               className="bg-[#081120] border border-neon-blue/30 w-full max-w-2xl rounded-2xl overflow-hidden p-6 relative flex flex-col max-h-[85vh] z-50 shadow-[0_0_50px_rgba(0,240,255,0.15)]"
             >
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-neon-blue to-transparent" />
               
@@ -3236,7 +3237,7 @@ export default function App() {
                     <Shield className="w-5 h-5 text-neon-blue" />
                     PRIVACY POLICY & COGNITIVE SECURITY
                   </h2>
-                  <p className="text-[10px] font-mono text-gray-400">LAST UPDATED: 2026-05-25 (COGNITIVE REVISION)</p>
+                  <p className="text-[10px] font-mono text-gray-400">LAST UPDATED: 2026-05-27 (REGULATORY REVISION)</p>
                 </div>
                 <button 
                   onClick={handleClosePrivacy}
@@ -3249,40 +3250,47 @@ export default function App() {
               {/* Policy scroll area */}
               <div className="flex-1 overflow-y-auto text-left font-mono text-[11px] text-gray-300 space-y-4 pr-1 leading-relaxed custom-scrollbar">
                 <div className="bg-neon-blue/5 border border-neon-blue/15 p-3 rounded-lg text-neon-blue text-[10px]">
-                  <strong>🇮🇳 DATA RESIDENCY DECREE:</strong> All metrics, dynamic spectrum diagnostics, and hardware variables processed by DevicePulse AI Core are anchored within Indian local browser buffers. No telemetry leaves the state grid without authorization.
+                  <strong>🇮🇳 INDIAN DPDP ACT & GDPR COMPLIANCE DECREE:</strong> All metrics, network packets, hardware diagnostics, and device parameters processed by DevicePulse AI Core are anchored within Indian local browser buffers. No sensitive telemetry or personal information leaves this state grid without explicit consent.
                 </div>
 
                 <section className="space-y-1.5">
-                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">1. Diagnostics & Telemetry Harvesting</h3>
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">1. Scope & Consent</h3>
                   <p>
-                    We leverage live browser device APIs and simulated sensor hardware channels (including CPU voltage, RAM latency, system thermal loops, and cluster memory status) to render 3D dynamic health representations. This data stream is processed directly on your local system interface.
+                    By activating our terminal diagnostics, you grant consent to process local browser device configuration parameters (including active battery cycle rates, real-time CPU states, memory usage clusters, cellular signal levels, and thermal profile loops). This data is processed purely to present active interactive health metrics.
                   </p>
                 </section>
 
                 <section className="space-y-1.5">
-                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">2. AI Diagnosis Anonymization</h3>
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">2. Diagnostics & Telemetry Harvesting</h3>
                   <p>
-                    When initiating Gemini Cognitive Analysis, only aggregated parameters (pure voltage values, percentage logs, storage capacity points) are transmitted through secure TLS 1.3 tunnels to our dedicated proxy server. Individual hardware identifiers, unique user profiles, or local file trees are NEVER analyzed or retained.
+                    We leverage secure, sandboxed browser metrics to populate diagnostic channels. Touch verification digitizers, audio frequencies, and accelerometer grids run entirely client-side. No peripheral recordings, visual media, or device screen interactions are stored or recorded on any server.
                   </p>
                 </section>
 
                 <section className="space-y-1.5">
-                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">3. Subscription Ledger Retention</h3>
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">3. Gemini Cognitive Diagnostics Anonymization</h3>
                   <p>
-                    Any transaction registered via our Razorpay integration retains only the generic transaction token, subscription state, and active duration. This is tied securely to your unique local client device key, neutralizing standard marketing tracker models.
+                    When activating AI core predictions, our proxy server filters all data requests to strip out any unique browser cookies, system tags, IP addresses, or personal network coordinates. The Gemini model analyzes strictly non-personally identifiable numbers (such as storage rates, temperatures, and battery voltages) to yield failure-rate summaries.
                   </p>
                 </section>
 
                 <section className="space-y-1.5">
-                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">4. User Rights (GDPR / Indian DPDP Act)</h3>
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">4. Financial Transactions & Razorpay Protocol</h3>
                   <p>
-                    As an offline-first hardware monitor, you maintain 100% data access. Cleansing your application storage variables via standard browser configuration instantly expunges all recorded histories, localized tokens, and custom diagnostic diagnostics forever.
+                    Billing subscriptions (both PRO and ULTRA plan versions) are processed using state-of-the-art PCI-DSS compliant payment tunnels powered by Razorpay. DevicePulse does not capture, store, or transmit your raw card numbers, Netbanking passwords, or UPI PIN credentials. Only an anonymous transaction token is mapped to verify authorization.
+                  </p>
+                </section>
+
+                <section className="space-y-1.5">
+                  <h3 className="text-white font-bold text-xs uppercase tracking-wide">5. Data Retention, Purging, & Erasure</h3>
+                  <p>
+                    Under user rights granted by GDPR and the Indian DPDP Act 2023, you maintain complete ownership of your device tokens. Clearing your client-side browser cache instantly deletes all local storage tracking files, manual synchronization statuses, and active session histories, ensuring absolute deletion of all local parameters instantly.
                   </p>
                 </section>
               </div>
 
               <div className="mt-6 border-t border-white/10 pt-4 flex justify-between items-center bg-[#050b15] -mx-6 -mb-6 p-4">
-                <span className="text-[10px] text-gray-500 font-mono">SECURE BY DESIGN &bull; ZERO TRACKERS FOUND</span>
+                <span className="text-[10px] text-gray-500 font-mono">SECURE BY DESIGN &bull; ZERO THIRD-PARTY TRACKERS</span>
                 <button 
                   onClick={handleClosePrivacy}
                   className="px-5 py-2 bg-neon-blue hover:bg-[#00e0ef] text-black font-black uppercase tracking-wider text-[10px] rounded-lg transition-colors cursor-pointer"

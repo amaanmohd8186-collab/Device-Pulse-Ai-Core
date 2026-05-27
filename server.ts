@@ -13,10 +13,10 @@ const RAZORPAY_KEY_ID = process.env.VITE_RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = 3000;
 
+async function startServer() {
   // Use raw body for Razorpay webhook verification
   app.use("/api/razorpay/webhook", express.raw({ type: 'application/json' }));
   app.use(express.json());
@@ -130,17 +130,23 @@ async function startServer() {
     if (!uid || !subscriptionId) return res.status(400).json({ error: "Missing fields" });
 
     try {
-      const isPro = status === "PRO" || status === "ACTIVE";
+      let finalStatus: "FREE" | "PRO" | "ULTRA" = "FREE";
+      if (status === "ULTRA" || status === "ultra") {
+        finalStatus = "ULTRA";
+      } else if (status === "PRO" || status === "pro" || status === "ACTIVE" || status === "active") {
+        finalStatus = "PRO";
+      }
+
       await adminDb.collection("users").doc(uid).set({
         uid,
         subscriptionId,
         planId,
-        subscriptionStatus: isPro ? "PRO" : "FREE", 
+        subscriptionStatus: finalStatus, 
         expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days active
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
-      res.json({ success: true, status: isPro ? "PRO" : "FREE" });
+      res.json({ success: true, status: finalStatus });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -836,23 +842,27 @@ Keep it to exactly 1 or 2 small sentences, making it extremely human and spontan
   });
 
   // Vite middleware setup
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+  if (!process.env.VERCEL) {
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-  });
 }
 
 startServer();
+
+export default app;
